@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文字ジェネレーター（完全解決版）</title>
+<style>
+  body {
+    font-family: "Meiryo", sans-serif;
+    background: #f0f2f5;
+    padding: 20px;
+    max-width: 900px;
+    margin: 0 auto;
+    color: #333;
+  }
+  h1 {
+    color: #1a73e8;
+    border-bottom: 4px solid #1a73e8;
+    padding-bottom: 10px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .reset-btn {
+    background: #d93025; color: white; border: none; padding: 5px 10px;
+    font-size: 12px; cursor: pointer; border-radius: 4px;
+  }
+
+  /* 箱のデザイン */
+  .box {
+    background: white; padding: 25px; border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px;
+  }
+  h2 { margin-top: 0; font-size: 18px; color: #1a73e8; }
+
+  /* STEP 1 ファイル読込 */
+  .upload-area {
+    border: 3px dashed #ccc; padding: 40px; text-align: center;
+    border-radius: 8px; cursor: pointer; background: #fafafa;
+    transition: 0.2s;
+  }
+  .upload-area:hover { border-color: #1a73e8; background: #e8f0fe; }
+  .file-ok {
+    margin-top: 15px; padding: 10px; background: #e6f4ea; 
+    color: #137333; font-weight: bold; border-radius: 4px; display: none;
+  }
+
+  /* STEP 2 設定エリア */
+  .control-panel {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 30px;
+  }
+  @media(max-width:600px){ .control-panel{ grid-template-columns: 1fr; } }
+
+  .input-group { margin-bottom: 15px; }
+  label { display: block; font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #555; }
+  
+  input, select, textarea {
+    width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px;
+    font-size: 16px; box-sizing: border-box;
+  }
+  input:focus, select:focus, textarea:focus { border-color: #1a73e8; outline: none; }
+
+  /* 位置ボタン */
+  .pos-presets { display: flex; gap: 10px; margin-bottom: 10px; }
+  .pos-btn {
+    flex: 1; padding: 8px; background: #f1f3f4; border: 1px solid #ccc;
+    cursor: pointer; border-radius: 4px; font-size: 13px; color: #333;
+  }
+  .pos-btn:hover { background: #e8f0fe; border-color: #1a73e8; color: #1a73e8; }
+
+  /* 色とサイズを横並びに */
+  .row { display: flex; gap: 15px; }
+  .col { flex: 1; }
+
+  /* 追加ボタン */
+  .add-btn {
+    width: 100%; padding: 15px; background: #34a853; color: white;
+    border: none; border-radius: 8px; font-size: 18px; font-weight: bold;
+    cursor: pointer; margin-top: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+  .add-btn:hover { background: #2d9249; transform: translateY(-1px); }
+
+  /* リスト */
+  .list-area {
+    margin-top: 0; border: 1px solid #eee; border-radius: 8px;
+    max-height: 500px; overflow-y: auto; background: #fafafa;
+  }
+  .list-item {
+    background: white; border-bottom: 1px solid #eee; padding: 15px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .item-info { font-size: 14px; }
+  .item-meta { font-size: 12px; color: #777; margin-top: 4px; }
+  .del-btn {
+    background: #fce8e6; color: #c5221f; border: 1px solid #fce8e6;
+    padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;
+  }
+
+  /* STEP 3 ボタン */
+  .action-btn {
+    padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px;
+    border: none; cursor: pointer; color: white; margin-right: 10px;
+  }
+  .dl-btn { background: #1a73e8; }
+  .copy-btn { background: #5f6368; }
+  .msg-area {
+    margin-top: 10px; font-size: 14px; font-weight: bold; color: #137333;
+  }
+</style>
+</head>
+<body>
+
+<h1>
+  文字ジェネレーター（完全版）
+  <button class="reset-btn" onclick="resetAll()">全データを消去してリセット</button>
+</h1>
+
+<div class="box">
+  <h2>STEP 1: data.js を読み込む</h2>
+  <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+    📁 ここをクリックして data.js を選択
+  </div>
+  <input type="file" id="fileInput" accept=".js" style="display:none;">
+  <div class="file-ok" id="fileMsg"></div>
+</div>
+
+<div class="box" id="step2" style="display:none;">
+  <h2>STEP 2: 文字の設定と入力</h2>
+  
+  <div class="control-panel">
+    <div>
+      <div class="input-group">
+        <label>① シーン番号</label>
+        <input type="number" id="sceneNum" value="1" min="1">
+      </div>
+
+      <div class="input-group">
+        <label>② 表示する文字</label>
+        <textarea id="textVal" rows="3" placeholder="ここに文字を入力"></textarea>
+      </div>
+
+      <div class="input-group">
+        <label>③ 文字の大きさ・色・フォント</label>
+        <div class="row">
+          <div class="col">
+            <input type="number" id="sizeVal" value="32" placeholder="サイズ">
+          </div>
+          <div class="col">
+            <input type="color" id="colorVal" value="#ffffff" style="height:46px; padding:2px;">
+          </div>
+        </div>
+        <div style="margin-top:10px;">
+          <select id="fontVal">
+            <option value="'Meiryo',sans-serif">ゴシック体 (メイリオ)</option>
+            <option value="'Yu Mincho',serif">明朝体</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>④ 表示位置 (X=横, Y=縦)</label>
+        <div class="pos-presets">
+          <button class="pos-btn" onclick="setPos(5, 5)">↖ 左上へ</button>
+          <button class="pos-btn" onclick="setPos(5, 65)">⬇ 中央下へ</button>
+          <button class="pos-btn" onclick="setPos(5, 85)">⬇ 最下部へ</button>
+        </div>
+        <div class="row">
+          <div class="col">
+            X (%) <input type="number" id="xVal" value="5">
+          </div>
+          <div class="col">
+            Y (%) <input type="number" id="yVal" value="85">
+          </div>
+        </div>
+      </div>
+
+      <button class="add-btn" onclick="addEntry()">⬇ リストに追加 (上書き)</button>
+    </div>
+
+    <div>
+      <label>追加された文字一覧</label>
+      <div class="list-area" id="listArea">
+        <div style="padding:20px; color:#999; text-align:center;">まだありません</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="box" id="step3" style="display:none;">
+  <h2>STEP 3: 出力</h2>
+  <div style="display:flex; align-items:center;">
+    <button class="action-btn dl-btn" onclick="doDownload()">💾 data.js をダウンロード</button>
+    <button class="action-btn copy-btn" onclick="doCopy()">📋 コードをコピー</button>
+  </div>
+  <div id="finalMsg" class="msg-area"></div>
+  
+  <textarea id="copySource" style="opacity:0; height:1px; position:absolute;"></textarea>
+</div>
+
+<script>
+let originalData = null;
+let entries = {}; // { 1: {text:"...", size:30...} }
+
+// 起動時に履歴読み込み
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('final_text_gen');
+  if(saved) {
+    try {
+      entries = JSON.parse(saved);
+      updateListDisplay();
+    } catch(e){}
+  }
+});
+
+// ファイル読み込み
+document.getElementById('fileInput').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  
+  const r = new FileReader();
+  r.onload = function(evt) {
+    try {
+      const txt = evt.target.result;
+      const json = txt.replace(/var\s+APP_DATA\s*=\s*/, '').replace(/;[\s\S]*$/, '');
+      originalData = JSON.parse(json);
+      
+      document.getElementById('fileMsg').textContent = `✅ ${file.name} 読込成功 (シーン数: ${originalData.scenes.length})`;
+      document.getElementById('fileMsg').style.display = 'block';
+      document.getElementById('step2').style.display = 'block';
+      document.getElementById('step3').style.display = 'block';
+    } catch(err) {
+      alert('読込エラー: ' + err);
+    }
+  };
+  r.readAsText(file);
+});
+
+// ポジションボタン用関数（入力欄に値をセットするだけ）
+function setPos(x, y) {
+  document.getElementById('xVal').value = x;
+  document.getElementById('yVal').value = y;
+}
+
+// 追加・更新処理
+function addEntry() {
+  // ★ここが重要：画面の入力値をそのまま取得します。裏の計算はしません。
+  const num = parseInt(document.getElementById('sceneNum').value);
+  const text = document.getElementById('textVal').value;
+  const size = parseInt(document.getElementById('sizeVal').value);
+  const color = document.getElementById('colorVal').value;
+  const x = parseInt(document.getElementById('xVal').value);
+  const y = parseInt(document.getElementById('yVal').value);
+  const font = document.getElementById('fontVal').value;
+
+  if(!num || !text) { alert('シーン番号と文字は必須です'); return; }
+
+  // データ保存
+  entries[num] = {
+    text: text,
+    size: size,
+    color: color,
+    x: x,
+    y: y,
+    font: font,
+    bold: 'bold', // 常に太字
+    shadow: 0.6   // 常に影あり
+  };
+
+  // 履歴保存
+  localStorage.setItem('final_text_gen', JSON.stringify(entries));
+
+  updateListDisplay();
+  
+  // 次のシーンへ
+  document.getElementById('sceneNum').value = num + 1;
+  document.getElementById('textVal').value = '';
+}
+
+// リスト表示更新
+function updateListDisplay() {
+  const list = document.getElementById('listArea');
+  list.innerHTML = '';
+  
+  const keys = Object.keys(entries).sort((a,b)=>Number(a)-Number(b));
+  if(keys.length === 0) {
+    list.innerHTML = '<div style="padding:20px; color:#999; text-align:center;">まだありません</div>';
+    return;
+  }
+
+  keys.forEach(k => {
+    const d = entries[k];
+    const div = document.createElement('div');
+    div.className = 'list-item';
+    div.innerHTML = `
+      <div class="item-info">
+        <span style="background:#1a73e8; color:white; padding:2px 6px; border-radius:4px; font-size:12px;">シーン ${k}</span>
+        <span style="font-weight:bold; margin-left:8px;">${escapeHtml(d.text)}</span>
+        <div class="item-meta">
+          サイズ: ${d.size}px / 色: <span style="color:${d.color}">■</span> / 位置: (${d.x}%, ${d.y}%)
+        </div>
+      </div>
+      <button class="del-btn" onclick="delEntry(${k})">削除</button>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function delEntry(k) {
+  delete entries[k];
+  localStorage.setItem('final_text_gen', JSON.stringify(entries));
+  updateListDisplay();
+}
+
+// データ生成処理
+function makeCode() {
+  if(!originalData) return null;
+  const newData = JSON.parse(JSON.stringify(originalData));
+
+  newData.scenes.forEach((sc, idx) => {
+    const myData = entries[idx + 1]; // シーン番号1始まり対応
+    
+    // 既存のテキストホットスポットを消す
+    if(sc.infoHotspots) {
+      sc.infoHotspots = sc.infoHotspots.filter(h => !h.text);
+    } else {
+      sc.infoHotspots = [];
+    }
+
+    // 新しいテキストを追加
+    if(myData) {
+      sc.infoHotspots.push({
+        text: myData.text,
+        x: myData.x,
+        y: myData.y,
+        size: myData.size,
+        color: myData.color,
+        font: myData.font,
+        bold: myData.bold,
+        shadow: myData.shadow
+      });
+    }
+  });
+
+  return 'var APP_DATA = ' + JSON.stringify(newData, null, 2) + ';';
+}
+
+// ダウンロード
+function doDownload() {
+  const code = makeCode();
+  if(!code) { alert('data.jsを読み込んでください'); return; }
+  
+  const blob = new Blob([code], {type:'text/javascript'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'data.js';
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  document.getElementById('finalMsg').textContent = '✅ ダウンロードしました！';
+}
+
+// コピー
+function doCopy() {
+  const code = makeCode();
+  if(!code) { alert('data.jsを読み込んでください'); return; }
+
+  const ta = document.getElementById('copySource');
+  ta.value = code;
+  ta.select();
+  document.execCommand('copy');
+  
+  document.getElementById('finalMsg').textContent = '✅ クリップボードにコピーしました！';
+}
+
+function resetAll() {
+  if(confirm('本当にすべて消しますか？')) {
+    localStorage.removeItem('final_text_gen');
+    location.reload();
+  }
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+</script>
+</body>
+</html>
