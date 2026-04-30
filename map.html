@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<title>大野川VR</title>
+<title>VRツアーマップ</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
@@ -9,41 +9,47 @@
 body, html { width: 100%; height: 100%; overflow: hidden; background: #222; }
 .map-container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; background: #222; }
 .map-image { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
-.text-overlay { position: absolute; top: 2%; left: 0; right: 0; z-index: 100; padding: 0 20px; pointer-events: none; text-align: left; }
-.overlay-title { font-size: 48px; color: #ff8080; font-weight: bold; font-family: 'Yu Mincho','YuMincho','Hiragino Mincho ProN',serif; text-shadow: 0 0 10px rgba(0,0,0,0.95), 0 0 20px rgba(0,0,0,0.76), 0 0 30px rgba(0,0,0,0.57), 0 0 40px rgba(0,0,0,0.38); margin-bottom: 12px; }
-.overlay-desc { font-size: 24px; color: #ffff80; white-space: pre-wrap; font-family: 'Yu Mincho','YuMincho','Hiragino Mincho ProN',serif; line-height: 1.6; text-shadow: 0 0 10px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.7200000000000001), 0 0 30px rgba(0,0,0,0.54), 0 0 40px rgba(0,0,0,0.36000000000000004); }
-.map-pin { position: absolute; transform: translate(-50%, -100%); cursor: pointer; z-index: 10; display: flex; flex-direction: column; align-items: center; transition: transform 0.2s; -webkit-tap-highlight-color: transparent; }
+.overlay-text { position: absolute; z-index: 5; pointer-events: none; }
+.main-title { font-size: 48px; color: #ffff00; font-weight: bold; font-family: 'Yu Mincho','YuMincho','Hiragino Mincho ProN','MS PMincho',serif; text-shadow: 0 0 10px rgba(0,0,0,0.95), 0 0 20px rgba(0,0,0,0.76), 0 0 30px rgba(0,0,0,0.57), 0 0 40px rgba(0,0,0,0.38); margin-bottom: 10px; text-align: left; }
+.desc-text { font-size: 23px; color: #ff8040; font-family: 'Hiragino Kaku Gothic Pro','Meiryo',sans-serif; text-shadow: 0 0 10px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.7200000000000001), 0 0 30px rgba(0,0,0,0.54), 0 0 40px rgba(0,0,0,0.36000000000000004); white-space: pre-wrap; line-height: 1.6; text-align: left; }
+.map-pin { position: absolute; transform: translate(-50%, -100%); cursor: pointer; z-index: 10; display: flex; flex-direction: column; align-items: center; transition: transform 0.2s; }
 .map-pin:hover, .map-pin:active { transform: translate(-50%, -100%) scale(1.15); }
 .pin-icon { width: 36px; height: 36px; border: 3px solid white; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 3px 8px rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; }
 .pin-number { transform: rotate(45deg); font-size: 14px; font-weight: bold; color: white; line-height: 1; }
-.pin-shadow { width: 10px; height: 5px; background: rgba(0,0,0,0.25); border-radius: 50%; margin-top: 2px; }
 .pin-label { background: rgba(255,255,255,0.95); color: #333; font-size: 12px; font-weight: bold; padding: 3px 8px; border-radius: 4px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.4); margin-bottom: 4px; pointer-events: none; font-family: sans-serif; }
-.compass-container { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-.compass-icon { width: 24px; height: 24px; background: rgba(255,255,255,0.95); border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.4); display: flex; justify-content: center; align-items: center; position: relative; }
-.compass-needle { position: absolute; width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 12px solid #e8453c; transform-origin: center 8px; }
-.compass-text { background: rgba(255,255,255,0.95); color: #e8453c; font-size: 11px; font-weight: bold; padding: 2px 6px; border-radius: 3px; box-shadow: 0 2px 6px rgba(0,0,0,0.4); font-family: sans-serif; }
 </style>
 </head>
 <body>
 <div class="map-container">
   <img src="map.jpg" alt="地図" class="map-image">
-<div class="text-overlay">
-  <div class="overlay-title">大野川のVRテスト撮影</div>
-  <div class="overlay-desc">GitHubのための作品</div>
-</div>
+  <div class="overlay-text" style="left: 2%; top: 3%;">
+    <div class="main-title">西展望台への登り口</div>
+    <div class="desc-text">まるで登山道入り口のような階段があります。</div>
+  </div>
 </div>
 <script>
 var MAP_BOUNDS = {
-  topLeft: { lat: 33.19381, lng: 131.677755 },
-  bottomRight: { lat: 33.188257, lng: 131.69031 }
+  topLeft: { lat: 33.209755, lng: 131.651764 },
+  bottomRight: { lat: 33.209115, lng: 131.65329 }
 };
-var MAP_SIZE = { width: 1852, height: 922 };
 var PINS = [
-  { lat: 33.188866, lng: 131.685755, name: '飛行開始地点', scene: 1, line: 'oonogawa-vr', color: '#3498db', heading: 0 }
+
+  // Pin #1: 散歩道 (aa - sceneId: 0-aa001)
+  { lat: 33.209433, lng: 131.652364, name: '散歩道', sceneId: '0-aa001', color: '#80ff00', greenArrows: [{ sceneId: '6-aa007', startAngle: 90, endAngle: 140, targetSceneId: '10-cc001', yawOffset: -36 }] },
+
+  // Pin #2: 西展望台へ (bb - sceneId: 10-cc001)
+  { lat: 33.209572, lng: 131.652686, name: '西展望台へ', sceneId: '10-cc001', color: '#ffff00' }
 ];
 
 function goToScene(pin) {
-  window.location.href = './viewer.html?scene=' + pin.scene;
+  var url = './viewer.html?id=' + pin.sceneId;
+  if (pin.flip) url += '&flip=1';
+  if (pin.greenArrows && pin.greenArrows.length > 0) {
+    var encoded = encodeURIComponent(JSON.stringify(pin.greenArrows));
+    url += '&greenArrows=' + encoded;
+  }
+  url += '&back=./map.html';
+  window.location.href = url;
 }
 
 function gpsToPercent(lat, lng) {
@@ -60,13 +66,7 @@ PINS.forEach(function(pin, i) {
   el.style.left = pos.x + '%';
   el.style.top = pos.y + '%';
   el.setAttribute('data-idx', i);
-  
-  var compassHTML = '';
-  if (pin.heading !== undefined && pin.heading !== null && !isNaN(pin.heading)) {
-    compassHTML = '<div class="compass-container"><div class="compass-icon"><div class="compass-needle" style="transform: rotate(' + pin.heading + 'deg);"></div></div><div class="compass-text">' + Math.round(pin.heading) + '°</div></div>';
-  }
-  
-  el.innerHTML = compassHTML + '<div class="pin-label">' + pin.name + '</div><div class="pin-icon" style="background:' + pin.color + ';"><span class="pin-number">' + (i+1) + '</span></div><div class="pin-shadow"></div>';
+  el.innerHTML = '<div class="pin-label">' + pin.name + '</div><div class="pin-icon" style="background:' + pin.color + ';"><span class="pin-number">' + (i+1) + '</span></div>';
   el.addEventListener('click', function() { goToScene(PINS[parseInt(this.getAttribute('data-idx'))]); });
   container.appendChild(el);
 });

@@ -8,1139 +8,1086 @@
 
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { width: 100%; height: 100%; overflow: hidden; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
 #pano { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
-/* UI ボタン類 */
-#mapButton {
-  position: absolute; bottom: 30px; left: 20px; width: 70px; height: 70px;
-  cursor: pointer; z-index: 100; transition: opacity 2s ease, transform 0.3s ease; opacity: 0;
+/* 十字キー（測定用：白） */
+#crosshair {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 30px; height: 30px; pointer-events: none; z-index: 100; opacity: 0; transition: opacity 0.5s ease;
 }
-#mapButton.visible { opacity: 0.6; }
-#mapButton:hover { transform: scale(1.1); opacity: 1; }
+#crosshair.visible { opacity: 0.6; }
+#crosshair::before, #crosshair::after { content: ''; position: absolute; background: white; }
+#crosshair::before { top: 14px; left: 0; width: 30px; height: 2px; }
+#crosshair::after { left: 14px; top: 0; width: 2px; height: 30px; }
 
-#counter {
-  position: absolute; bottom: 30px; left: 110px; width: 60px; height: 60px;
-  background: white; border: 3px solid #ff0000; border-radius: 50%;
-  display: flex; justify-content: center; align-items: center;
-  font-size: 24px; font-weight: bold; color: #0066ff; z-index: 100;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.3); transition: opacity 2s ease; opacity: 0;
-  cursor: pointer;
+#compassContainer {
+  position: absolute; top: 20px; right: 20px; display: flex; align-items: center; z-index: 100;
+  transition: opacity 0.5s ease; opacity: 0; pointer-events: none;
 }
-#counter.visible { opacity: 0.6; }
+#compassContainer.visible { opacity: 1; pointer-events: auto; }
+
+/* 方位計（数値：全シーン共通） */
+#degreeCircle {
+  width: 60px; height: 60px; background: rgba(255,255,255,0.8); border-radius: 50%; border: 3px solid #0066ff;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  font-family: sans-serif; font-weight: bold; font-size: 14px; color: #0066ff;
+  z-index: 102;
+}
+#degreeCircle small { font-size: 10px; color: #666; }
+
+/* コンパス（針：データがある時のみ） */
+#compassCircle {
+  width: 60px; height: 60px; background: white; border-radius: 50%; border: 3px solid #0066ff;
+  margin-left: 10px; display: none; justify-content: center; align-items: center; box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+#compassCircle.active { display: flex; }
 
 #volumeContainer {
-  position: absolute; top: 20px; left: 20px;
-  height: 60px; display: flex; align-items: center;
-  background: rgba(54, 40, 34, 0.85);
-  padding: 0 20px; border-radius: 30px;
-  z-index: 100; transition: opacity 2s ease; opacity: 0;
-  border: 1px solid rgba(255,255,255,0.2);
+  position: absolute; top: 20px; left: 20px; height: 60px; display: flex; align-items: center;
+  background: rgba(54, 40, 34, 0.85); padding: 0 20px; border-radius: 30px;
+  z-index: 100; transition: opacity 0.5s ease; opacity: 0; border: 1px solid rgba(255,255,255,0.2);
   pointer-events: none;
 }
 #volumeContainer.visible { opacity: 0.8; pointer-events: auto; }
+#volumeLabel { color: #FF8C00; font-weight: bold; font-family: sans-serif; margin-right: 12px; font-size: 18px; }
+#volumeSlider { cursor: pointer; width: 100px; height: 8px; accent-color: #00FF00; }
+.auto-ctrl{position:absolute;left:20px;height:46px;display:flex;align-items:center;padding:0 14px;border-radius:23px;z-index:100;transition:opacity 0.5s ease;opacity:0;pointer-events:none;}
+.auto-ctrl.visible{opacity:0.9;pointer-events:auto;}
+#speedContainer{top:90px;background:rgba(10,30,55,0.88);border:1px solid rgba(80,160,255,0.4);}
+#zoomContainer{top:144px;background:rgba(10,45,25,0.88);border:1px solid rgba(80,200,100,0.4);}
+#fadeContainer{top:198px;background:rgba(55,20,40,0.88);border:1px solid rgba(255,100,160,0.4);}
+.ctrl-label{font-weight:bold;font-family:sans-serif;font-size:14px;margin-right:8px;white-space:nowrap;}
+#speedContainer .ctrl-label{color:#66ccff;}#zoomContainer .ctrl-label{color:#88ee88;}#fadeContainer .ctrl-label{color:#ffaacc;}
+.ctrl-slider{cursor:pointer;width:80px;height:8px;}
+#speedSlider{accent-color:#66ccff;}#zoomSlider{accent-color:#88ee88;}#fadeSlider{accent-color:#ffaacc;}
+.ctrl-val{font-family:sans-serif;font-size:12px;margin-left:7px;min-width:38px;}
+#speedVal{color:#aaddff;}#zoomVal{color:#aaffaa;}#fadeVal{color:#ffccdd;}
 
-#volumeLabel {
-  color: #FF8C00;
-  font-weight: bold; font-family: sans-serif;
-  margin-right: 12px; font-size: 18px;
+#mapButton { position: absolute; bottom: 30px; left: 20px; width: 70px; height: 70px; cursor: pointer; z-index: 100; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
+#mapButton.visible { opacity: 0.7; pointer-events: auto; }
+#counter { position: absolute; bottom: 30px; left: 110px; width: 60px; height: 60px; background: white; border: 3px solid #ff0000; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; font-weight: bold; color: #0066ff; z-index: 100; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; user-select: none; }
+#counter.visible { opacity: 0.7; pointer-events: auto; }
+
+.arrow-nav { position: absolute; width: 60px; height: 60px; cursor: pointer; z-index: 100; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
+.arrow-nav.visible { opacity: 0.8; pointer-events: auto; }
+#arrowUp { bottom: 160px; right: 120px; }
+#arrowDown { bottom: 50px; right: 120px; }
+#arrowLeft { bottom: 105px; right: 185px; }
+#arrowRight { bottom: 105px; right: 55px; }
+#arrowUpGreen { bottom: 189px; right: 133px; }
+
+/* 53-cc001 フェードイン用オーバーレイ（白系） */
+#fadeOverlay {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(255, 255, 255, 0.8); z-index: 1000; opacity: 0;
+  pointer-events: none; transition: opacity 2s ease-out;
 }
-#volumeSlider {
-  cursor: pointer; width: 100px; height: 8px;
-  accent-color: #00FF00;
-}
 
-/* 矢印ナビ */
-.arrow-nav {
-  position: absolute; width: 60px; height: 60px; cursor: pointer; z-index: 100;
-  transition: opacity 2s ease, transform 0.3s ease; opacity: 0;
-}
-.arrow-nav.visible { opacity: 0.6; }
-.arrow-nav:hover { transform: scale(1.15); opacity: 1; }
-
-#arrowUp    { position: absolute; bottom: 160px; right: 120px; }
-#arrowDown  { position: absolute; bottom: 50px;  right: 120px; }
-#arrowLeft  { position: absolute; bottom: 105px; right: 185px; }
-#arrowRight { position: absolute; bottom: 105px; right: 55px;  }
-
-/* 文字ホットスポット（背景なし・縁取り文字） */
-#textHotspot {
-  position: absolute;
-  bottom: auto;
-  left: 5%;
-  max-width: 55%;
-  z-index: 90;
-  opacity: 0;
-  transition: opacity 1.5s ease-in-out;
+/* ===== infoHotspot テキストオーバーレイ ===== */
+#sceneText {
+  position: fixed;
+  z-index: 200;
+  display: inline-block;
+  padding: 4px 10px;
+  background: none;
   pointer-events: none;
-}
-#textHotspot.visible { opacity: 1; }
-
-#textHotspot p {
-  color: #FFFFFF;
-  font-size: 20px;
-  font-weight: bold;
-  line-height: 1.6;
-  margin: 0;
-  text-align: left;
-
-  /* 黒い縁取り（字幕風） */
+  text-align: center;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  /* 多重シャドウで背景に溶け込む */
   text-shadow:
-    2px 2px 4px black,
-    -2px 2px 4px black,
-    2px -2px 4px black,
-    -2px -2px 4px black;
+    0   0   2px  rgba(0,0,0,1),
+    0   0   5px  rgba(0,0,0,1),
+    0   0   10px rgba(0,0,0,0.85),
+    1px  1px 1px rgba(0,0,0,1),
+    -1px 1px 1px rgba(0,0,0,1),
+    1px -1px 1px rgba(0,0,0,1),
+    -1px -1px 1px rgba(0,0,0,1);
+  opacity: 1;
+  transition: opacity 1s ease;
 }
 
-/* 角度表示 */
-#angleDisplay {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 60px;
-  height: 60px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 2px solid #0066ff;
-  border-radius: 50%;
-  display: none;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  font-size: 11px;
-  font-weight: bold;
-  color: #0066ff;
-  z-index: 100;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-  opacity: 0.8;
-  user-select: none;
-}
-#angleDisplay.active { display: flex; }
-
-#angleYaw {
-  font-size: 14px;
-  margin-bottom: 2px;
-}
-#anglePitch {
-  font-size: 10px;
-  color: #666;
-}
-
-/* 中央十字マーカー */
-#centerCross {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 30px;
-  height: 30px;
-  z-index: 50;
-  pointer-events: none;
+/* 扉演出用：部分ぼかし（中心→外側へグラデーション） */
+#blurOverlay {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 1001;
   opacity: 0;
-  display: none;
-}
-#centerCross.active {
-  display: block;
-  opacity: 0.4;
-}
-
-#centerCross::before,
-#centerCross::after {
-  content: '';
-  position: absolute;
-  background: white;
-}
-
-/* 縦線 */
-#centerCross::before {
-  left: 50%;
-  top: 0;
-  width: 1px;
-  height: 100%;
-  transform: translateX(-50%);
-}
-
-/* 横線 */
-#centerCross::after {
-  top: 50%;
-  left: 0;
-  width: 100%;
-  height: 1px;
-  transform: translateY(-50%);
-}
-
-/* コンパス */
-#compass {
-  position: absolute;
-  top: 20px;
-  right: 90px;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.92);
-  border: 2px solid #0066ff;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-  display: none;
-  justify-content: center;
-  align-items: center;
-  z-index: 100;
-  user-select: none;
   pointer-events: none;
-}
-#compass.active { display: flex; }
 
-#compassRose {
-  width: 44px;
-  height: 44px;
-  position: relative;
-  transition: transform 0.15s ease;
-}
+  /* ぼかし強度（JSで更新） */
+  -webkit-backdrop-filter: blur(var(--blurPx, 14px));
+  backdrop-filter: blur(var(--blurPx, 14px));
 
-/* N文字 */
-#compassN {
-  position: absolute;
-  top: -1px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 11px;
-  font-weight: bold;
-  color: #e8453c;
-  line-height: 1;
-}
-
-/* 北針（赤） */
-#compassRose::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 6px;
-  width: 0;
-  height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-bottom: 16px solid #e8453c;
-  transform: translateX(-50%);
-}
-
-/* 南針（白） */
-#compassRose::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 6px;
-  width: 0;
-  height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 16px solid #aaa;
-  transform: translateX(-50%);
-}
-
-/* 中心点 */
-#compassCenter {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 6px;
-  height: 6px;
-  background: #333;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 1;
-}
-
-
-  #textHotspot {
-    bottom: 5px;
-    left: 170px;
-    max-width: calc(100% - 200px);
-  }
-  #textHotspot p {
-    font-size: 16px;
-    text-shadow:
-      2px 2px 4px black,
-      -2px 2px 4px black,
-      2px -2px 4px black,
-      -2px -2px 4px black;
-  }
+  /* クリック位置を中心に、内側ほど強く・外側ほど透明（=くっきり） */
+  -webkit-mask-image: radial-gradient(circle at var(--bx, 50%) var(--by, 50%),
+    rgba(0,0,0,1) 0px,
+    rgba(0,0,0,1) var(--innerR, 120px),
+    rgba(0,0,0,0) var(--outerR, 260px)
+  );
+  mask-image: radial-gradient(circle at var(--bx, 50%) var(--by, 50%),
+    rgba(0,0,0,1) 0px,
+    rgba(0,0,0,1) var(--innerR, 120px),
+    rgba(0,0,0,0) var(--outerR, 260px)
+  );
 }
 </style>
 </head>
 
 <body>
-
 <div id="pano"></div>
+<div id="sceneText"></div>
+<div id="fadeOverlay"></div>
+<div id="blurOverlay"></div>
+<div id="crosshair"></div>
 
-<!-- 中央十字マーカー -->
-<div id="centerCross"></div>
-
-<img id="mapButton" src="Map戻り-removebg-preview.png" alt="Map" onclick="goToMap()">
-<div id="counter">1</div>
+<div id="compassContainer">
+  <div id="degreeCircle"><span id="yawTxt">0°</span><small id="pitchTxt">0°</small></div>
+  <div id="compassCircle">
+    <svg id="compassNeedle" viewBox="0 0 100 100" width="45" height="45" style="transition: transform 0.1s linear;">
+      <polygon points="50,90 65,50 35,50" fill="#999999" />
+      <polygon points="50,10 65,50 35,50" fill="#E60000" />
+      <text x="50" y="42" font-family="sans-serif" font-size="20" fill="white" font-weight="bold" text-anchor="middle">N</text>
+      <circle cx="50" cy="50" r="5" fill="#333333" />
+    </svg>
+  </div>
+</div>
 
 <div id="volumeContainer">
   <span id="volumeLabel">VOL</span>
   <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.5">
 </div>
+<div id="speedContainer" class="auto-ctrl"><span class="ctrl-label">速度</span><input type="range" id="speedSlider" class="ctrl-slider" min="1" max="9" step="1" value="5"><span class="ctrl-val" id="speedVal">普通</span></div>
+<div id="zoomContainer" class="auto-ctrl"><span class="ctrl-label">ズーム幅</span><input type="range" id="zoomSlider" class="ctrl-slider" min="1" max="9" step="1" value="1"><span class="ctrl-val" id="zoomVal">ゼロ</span></div>
+<div id="fadeContainer" class="auto-ctrl"><span class="ctrl-label">フェード幅</span><input type="range" id="fadeSlider" class="ctrl-slider" min="1" max="9" step="1" value="3"><span class="ctrl-val" id="fadeVal">小</span></div>
 
-<img id="arrowUp" class="arrow-nav" src="上-removebg-preview.png" alt="前進">
-<img id="arrowDown" class="arrow-nav" src="下-removebg-preview.png" alt="後退">
-<img id="arrowLeft" class="arrow-nav" src="左-removebg-preview.png" alt="左へ">
-<img id="arrowRight" class="arrow-nav" src="右-removebg-preview.png" alt="右へ">
+<img id="mapButton" src="Map戻り-removebg-preview.png" onclick="goToMap()">
+<div id="counter">1</div>
+<img id="arrowUp" class="arrow-nav" src="上-removebg-preview.png">
+<img id="arrowDown" class="arrow-nav" src="下-removebg-preview.png">
+<img id="arrowLeft" class="arrow-nav" src="左-removebg-preview.png">
+<img id="arrowRight" class="arrow-nav" src="右-removebg-preview.png">
+<img id="arrowUpGreen" class="arrow-nav" src="緑上-removebg-preview.png">
 
-<div id="textHotspot">
-  <p id="textContent"></p>
-</div>
-
-<!-- コンパス -->
-<div id="compass">
-  <div id="compassRose">
-    <span id="compassN">N</span>
-    <div id="compassCenter"></div>
-  </div>
-</div>
-
-<!-- 角度表示 -->
-<div id="angleDisplay">
-  <div id="angleYaw">0°</div>
-  <div id="anglePitch">0°</div>
-</div>
-
-<script src="vendor/screenfull.min.js"></script>
-<script src="vendor/bowser.min.js"></script>
 <script src="vendor/marzipano.js"></script>
-<script src="data.js"></script>
-
 <script>
-(function() {
+// ========================================
+// ★ 修正案A：URLパラメータ読み込みをIIFE外に移動
+// スコープ隔離による greenArrowConfig 消失を解決
+// ========================================
+var urlParams = new URLSearchParams(window.location.search);
+var initialYaw = urlParams.get('yaw');
+// ★ 前後左右反転フラグ（?flip=1 で全矢印方向を逆にする）
+var flipDir = urlParams.get('flip') === '1';
+// ★タイルフォルダ名（実フォルダに合わせて 'tiles'）
+window.TILES_BASE = "tiles1024";
+
+// data.js を fetch で読み込む（cache: 'no-store' でキャッシュを完全無効化）
+(function loadDataAndBoot() {
+  fetch('data.js', { cache: 'no-store' })
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(function(text) {
+      // data.js を実行して window.APP_DATA を定義
+      // eslint-disable-next-line no-new-func
+      (new Function(text))();
+      if (!window.APP_DATA) throw new Error('APP_DATA が未定義');
+      console.log('✅ data.js をキャッシュなしで読み込みました (fetch)');
+      startViewer();
+    })
+    .catch(function(err) {
+      // フォールバック：file://環境など fetch が使えない場合は script タグで読み込む
+      console.warn('⚠ fetch失敗、script タグで再試行:', err);
+      var s = document.createElement('script');
+      s.src = 'data.js?v=' + Date.now();
+      s.onload = function() {
+        console.log('✅ data.js を script タグで読み込みました');
+        startViewer();
+      };
+      document.head.appendChild(s);
+    });
+})();
+
+// 緑矢印設定をグローバルスコープで先に定義
+window.greenArrowConfig = {
+  arrows: []
+};
+
+// ★ infoHotspot テキスト管理
+window.shownTextScenes = {};   // 表示済みシーンID記録
+window.sceneTextTimer  = null; // フェードアウトタイマー
+
+// ★3種類の法則を実装するためのグローバル変数
+window.returnScene = null;                    // 戻り先シーン
+window.departureYaw = null;                   // 出発時の aa での yaw
+window.bbInitialYaw = null;                   // 進入先の初期 yaw（bb/cc の正面）
+
+// ★ BGM再生管理
+var bgmAudios = {};              // { fileName: HTMLAudioElement }
+var bgmVolume = parseFloat(localStorage.getItem('bgmVolume') || '0.5'); // 0..1
+// ★地図側のON/OFF（デフォルト：true）
+var bgmEnabled = (localStorage.getItem('bgmEnabled') !== 'false');  // 'false' 以外は true
+// ★長押しで「地図OFFでも鳴らす」強制再生フラグ
+var bgmForce = false;
+var bgmFadeOutDuration = 1000;   // フェードアウト時間（ms）
+
+// URLパラメータから緑矢印データを読み込み（IIFE外で実行）
+var greenArrowsParam = urlParams.get('greenArrows');
+console.log('🔍 greenArrowsParam from URL:', greenArrowsParam);
+
+if (greenArrowsParam) {
+  try {
+    console.log('🔍 Attempting to parse:', greenArrowsParam);
+    var decoded = decodeURIComponent(greenArrowsParam);
+    console.log('🔍 After decodeURIComponent:', decoded);
+    var arrowsArray = JSON.parse(decoded);
+    console.log('🔍 After JSON.parse:', arrowsArray);
+    if (Array.isArray(arrowsArray)) {
+      window.greenArrowConfig.arrows = arrowsArray;
+      console.log('✅ greenArrows loaded successfully:', window.greenArrowConfig.arrows);
+    } else {
+      console.warn('⚠️ arrowsArray is not an array');
+    }
+  } catch(e) {
+    console.error('❌ Failed to parse greenArrows:', e.message, e);
+  }
+} else {
+  console.warn('⚠️ greenArrowsParam is null or undefined from URL');
+}
+
+function startViewer() {
 'use strict';
-
-/* ------------------------------
-   ここから JS 本体（前半）
------------------------------- */
-
-var SWITCH_THRESHOLD = 91;
 var Marzipano = window.Marzipano;
 var data = window.APP_DATA;
+
+// ★ タイルレベルを自動補正（Marzipano出力の data.js をそのまま使えるようにする）
+// 1024tiles では size > 1024 のレベルは存在しないため除去し、
+// tileSize も size に合わせて補正する（例: tileSize:512,size:1024 → tileSize:1024,size:1024）
+// ※ faceSize はソース画像の実際の面サイズなので変更しない
+data.scenes.forEach(function(scene) {
+  scene.levels = scene.levels.filter(function(l) { return l.size <= 1024; });
+  scene.levels.forEach(function(l) {
+    if (!l.fallbackOnly) l.tileSize = l.size;
+  });
+});
+
 var panoElement = document.querySelector('#pano');
 var viewer = new Marzipano.Viewer(panoElement);
 
-var scenes = data.scenes;
-var scenesData = {};
-var currentScene = null;
-var currentView = null;
-var currentSceneObj = null;
+// ★画面タッチで自動再生停止（黄色矢印と同じ方式）
+panoElement.addEventListener('mousedown', function() {
+  if (typeof autoMoveActive !== 'undefined' && autoMoveActive) {
+    stopAutoMove();
+    console.log('⛔ タッチで自動再生停止');
+  }
+});
 
-/* ▼▼▼ iOS 対応：AudioContext ▼▼▼ */
-var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-var currentAudio = null;
-var currentVolume = 0.5;
+panoElement.addEventListener('touchstart', function(e) {
+  e.preventDefault();
+  if (typeof autoMoveActive !== 'undefined' && autoMoveActive) {
+    stopAutoMove();
+    console.log('⛔ タッチで自動再生停止');
+  }
+});
+
+
+// UI要素の取得（ここで一括定義するように修正）
+var counterEl = document.getElementById('counter');
+var mapBtnEl = document.getElementById('mapButton');
+var crosshairEl = document.getElementById('crosshair');
+var compassContEl = document.getElementById('compassContainer');
+var compassNeedleCircle = document.getElementById('compassCircle');
+var volumeUI = document.getElementById('volumeContainer');
+
 var audioEnabled = false;
-var volumeHideTimer = null;
-var bgmOffTimer = null;
-var bgmEnabled = false; // 一度ONにしたら維持
+// ★長押しの再生/停止トグル（地図OFFとは別軸）
+var bgmPlaying = true;
 
-/* -----------------------------------------------
-   ★ タイムアウト設定（この数字だけ変えればOK）
-   1分 = 60000、1時間 = 3600000
------------------------------------------------ */
-var BGM_TIMEOUT_MS = 55000; // BGM 49s + 6s余裕
+document.addEventListener('click', function enableAudioOnClick() {
+  audioEnabled = true;
+  document.removeEventListener('click', enableAudioOnClick);
+}, { once: true });
 
-/* 文字ホットスポット */
-var visitedScenes = {};
-var textHotspotElement = document.getElementById('textHotspot');
-var textContentElement = document.getElementById('textContent');
-
-/* 角度表示と十字マーカー */
-var angleDisplay = document.getElementById('angleDisplay');
-var angleYaw = document.getElementById('angleYaw');
-var anglePitch = document.getElementById('anglePitch');
-var centerCross = document.getElementById('centerCross');
-var compass = document.getElementById('compass');
-var compassRose = document.getElementById('compassRose');
-var debugMode = false;
-var counterLastTapTime = 0;
-
-/* URL パラメータ */
-var urlParams = new URLSearchParams(window.location.search);
-var startSceneParam = urlParams.get('scene');
-var startSceneNum = startSceneParam ? parseInt(startSceneParam) : 1;
-
-/* 行き・帰り分類 */
-var sceneInfo = {};
-var ikiScenes = [];
-var kaeriScenes = [];
-
-scenes.forEach(function(scene) {
-  var name = scene.name;
-  if (name.indexOf('b') > -1 || name.indexOf('ｂ') > -1 || name.indexOf('B') > -1) {
-    kaeriScenes.push(scene);
+function toggleBGMPlayback() {
+  // 長押しは「地図でOFFでも強制的に鳴らす」ことがある
+  if (bgmPlaying) {
+    bgmPlaying = false;
+    bgmForce = false;
+    stopAllBGM();
   } else {
-    ikiScenes.push(scene);
+    bgmPlaying = true;
+    if (!bgmEnabled) bgmForce = true;
+    if (currentSceneObj) playSceneBGM(currentSceneObj.data.id, { force: true });
   }
+}
+
+var scenesData = {};
+var currentScene = null, currentView = null, currentSceneObj = null;
+var uiTimeout, showExtras = false, showVolume = false, pressTimer;
+var speedUI=document.getElementById('speedContainer');
+var zoomUI=document.getElementById('zoomContainer');
+var fadeUI=document.getElementById('fadeContainer');
+var showAutoCtrl=false;
+
+data.scenes.forEach(function(sd) {
+  var tilesBase = window.TILES_BASE || 'tiles';
+  var source = Marzipano.ImageUrlSource.fromString(tilesBase + "/" + sd.id + "/{z}/{f}/{y}/{x}.jpg");
+  var geometry = new Marzipano.CubeGeometry(sd.levels);
+  var limiter = Marzipano.RectilinearView.limit.traditional(sd.faceSize, 75*Math.PI/180, 120*Math.PI/180);
+  var view = new Marzipano.RectilinearView(sd.initialViewParameters, limiter);
+  var scene = viewer.createScene({ source: source, geometry: geometry, view: view });
+  var dir = isSideRoute(sd.id) ? (isLeftSide(sd.id) ? 'left' : 'right') : 'iki';
+  scenesData[sd.id] = { scene: scene, view: view, data: Object.assign({}, sd, { direction: dir, position: parseInt(sd.name.replace(/[^0-9]/g, '')) || 1 }) };
 });
 
-/* 行きのシーン情報 */
-ikiScenes.forEach(function(scene, index) {
-  var position = index + 1;
-  var pairIndex = ikiScenes.length - index - 1;
-  var pairId = kaeriScenes[pairIndex] ? kaeriScenes[pairIndex].id : null;
+function showUI() {
+  var standardUI = [mapBtnEl, counterEl];
+  var arrows = document.querySelectorAll('.arrow-nav');
 
-  sceneInfo[scene.id] = {
-    position: position,
-    direction: 'iki',
-    pair: pairId
-  };
-});
+  standardUI.forEach(function(el) { if(el) el.classList.add('visible'); });
+  arrows.forEach(function(el) { el.classList.add('visible'); });
 
-/* 帰りのシーン情報 */
-kaeriScenes.forEach(function(scene, index) {
-  var position = index + 1;
-  var pairIndex = kaeriScenes.length - index - 1;
-  var pairId = ikiScenes[pairIndex] ? ikiScenes[pairIndex].id : null;
-
-  sceneInfo[scene.id] = {
-    position: position,
-    direction: 'kaeri',
-    pair: pairId
-  };
-});
-
-var maxPosition = Math.max(ikiScenes.length, kaeriScenes.length);
-
-/* シーン生成 */
-scenes.forEach(function(sceneData) {
-  var urlPrefix = "tiles";
-  var source = Marzipano.ImageUrlSource.fromString(
-    urlPrefix + "/" + sceneData.id + "/{z}/{f}/{y}/{x}.jpg",
-    { cubeMapPreviewUrl: urlPrefix + "/" + sceneData.id + "/preview.jpg" }
-  );
-
-  var geometry = new Marzipano.CubeGeometry(sceneData.levels);
-  var limiter = Marzipano.RectilinearView.limit.traditional(
-    sceneData.faceSize, 75*Math.PI/180, 120*Math.PI/180
-  );
-  var view = new Marzipano.RectilinearView(sceneData.initialViewParameters, limiter);
-
-  var scene = viewer.createScene({
-    source: source,
-    geometry: geometry,
-    view: view,
-    pinFirstLevel: false
-  });
-
-  var info = sceneInfo[sceneData.id] || { position: 1, direction: 'iki', pair: null };
-
-  scenesData[sceneData.id] = {
-    scene: scene,
-    view: view,
-    data: {
-      id: sceneData.id,
-      position: info.position,
-      direction: info.direction,
-      pair: info.pair,
-      infoHotspots: sceneData.infoHotspots || [],
-      heading: sceneData.heading
+  if (showExtras) {
+    if(crosshairEl) crosshairEl.classList.add('visible');
+    if(compassContEl) compassContEl.classList.add('visible');
+    
+    var hasCompassData = (currentSceneObj && (currentSceneObj.data.heading !== undefined || currentSceneObj.data.compassHeading !== undefined));
+    if(hasCompassData) {
+      compassNeedleCircle.classList.add('active');
+    } else {
+      compassNeedleCircle.classList.remove('active');
     }
-  };
-
-  // Light hotspots（電球明滅演出）
-  if (sceneData.lightHotspots) {
-    sceneData.lightHotspots.forEach(function(lh) {
-      var W = lh.width  || 300;
-      var H = lh.height || 300;
-      var cv = document.createElement('canvas');
-      cv.width = W; cv.height = H;
-      cv.style.cssText = 'display:block;pointer-events:none;';
-      var cc = cv.getContext('2d');
-
-      // 電球位置をox/oyで指定（0〜1の比率、デフォルト中央）
-      var cx = (lh.ox !== undefined ? lh.ox : 0.5) * W;
-      var cy = (lh.oy !== undefined ? lh.oy : 0.5) * H;
-      var color   = lh.color1 || '255,200,80';
-      var opacity = lh.opacity !== undefined ? lh.opacity : 0.45;
-      var t = 0;
-
-      function drawBulb() {
-        cc.clearRect(0, 0, W, H);
-
-        // 自然な明滅
-        var flicker = opacity * (
-          0.78
-          + 0.12 * Math.sin(t * 0.07)
-          + 0.07 * Math.sin(t * 0.19)
-          + 0.03 * Math.sin(t * 0.43)
-        );
-
-        // グローはcanvasの55%の半径まで、端には届かない
-        var glowR = Math.min(W, H) * 0.55;
-        var grdWide = cc.createRadialGradient(cx, cy, 0, cx, cy, glowR);
-        grdWide.addColorStop(0,   'rgba('+color+','+ (flicker * 0.78) +')');
-        grdWide.addColorStop(0.3, 'rgba('+color+','+ (flicker * 0.50) +')');
-        grdWide.addColorStop(0.65,'rgba('+color+','+ (flicker * 0.16) +')');
-        grdWide.addColorStop(1.0, 'rgba('+color+',0)');
-        cc.fillStyle = grdWide;
-        cc.fillRect(0, 0, W, H);
-
-        // 電球コア
-        var coreR = Math.min(W, H) * 0.07;
-        var grdCore = cc.createRadialGradient(cx, cy, 0, cx, cy, coreR);
-        grdCore.addColorStop(0,   'rgba(255,255,230,'+ Math.min(1, flicker*1.5) +')');
-        grdCore.addColorStop(0.5, 'rgba(255,215,100,'+ (flicker*0.9) +')');
-        grdCore.addColorStop(1,   'rgba('+color+',0)');
-        cc.fillStyle = grdCore;
-        cc.fillRect(0, 0, W, H);
-
-        t++;
-        requestAnimationFrame(drawBulb);
-      }
-      drawBulb();
-
-      // BGMと連動：長押しで開始、49秒で消える
-      cv.style.transition = 'opacity 2s ease';
-      cv.style.opacity = '0';
-      cv._isLight = true;
-
-      scene.hotspotContainer().createHotspot(cv,
-        { yaw: lh.yaw||0, pitch: lh.pitch||0 },
-        { perspective: { radius: lh.radius || 555 } }
-      );
-
-      // グローバルリストに登録
-      if (!window._lightCanvases) window._lightCanvases = [];
-      window._lightCanvases.push(cv);
-    });
+  } else {
+    if(crosshairEl) crosshairEl.classList.remove('visible');
+    if(compassContEl) compassContEl.classList.remove('visible');
   }
 
-  if (sceneData.videoHotspots) {
-    sceneData.videoHotspots.forEach(function(vh) {
-      var fade = vh.fade !== undefined ? vh.fade : 18;
-      var wrap = document.createElement('div');
-      wrap.style.cssText = [
-        'width:'  + (vh.width  || 520) + 'px',
-        'height:' + (vh.height || 293) + 'px',
-        'overflow:hidden',
+  if (showVolume) volumeUI.classList.add('visible'); else volumeUI.classList.remove('visible');
+  if(showAutoCtrl){[speedUI,zoomUI,fadeUI].forEach(function(el){if(el)el.classList.add('visible');});}
+  else{[speedUI,zoomUI,fadeUI].forEach(function(el){if(el)el.classList.remove('visible');});}
+
+  clearTimeout(uiTimeout);
+  uiTimeout = setTimeout(function() {
+    standardUI.concat([compassContEl, crosshairEl, volumeUI]).forEach(function(el) { if(el) el.classList.remove('visible'); });
+    arrows.forEach(function(el) { el.classList.remove('visible'); });
+  }, 3000);
+}
+
+// イベントリスナーの修正
+if (counterEl) {
+  counterEl.addEventListener('dblclick', function() {
+    showExtras = !showExtras;
+    showUI();
+  });
+  var tc=0,tt=null;
+  counterEl.addEventListener('click',function(){
+    tc++;if(tt)clearTimeout(tt);
+    tt=setTimeout(function(){tc=0;},600);
+    if(tc>=3){tc=0;clearTimeout(tt);showAutoCtrl=!showAutoCtrl;showUI();}
+  });
+  counterEl.addEventListener('mousedown', function() {
+    pressTimer = setTimeout(function() {
+      audioEnabled = true;
+      toggleBGMPlayback();
+      showVolume = !showVolume;
+      showUI();
+    }, 600);
+  });
+  counterEl.addEventListener('mouseup', function() { clearTimeout(pressTimer); });
+  counterEl.addEventListener('touchstart', function() {
+    pressTimer = setTimeout(function() {
+      audioEnabled = true;
+      toggleBGMPlayback();
+      showVolume = !showVolume;
+      showUI();
+    }, 600);
+  });
+  counterEl.addEventListener('touchend', function() { clearTimeout(pressTimer); });
+}
+
+document.addEventListener('mousemove', showUI);
+document.addEventListener('touchstart', showUI);
+
+function switchScene(sceneId, yaw, pitch, fov) {
+  var obj = scenesData[sceneId];
+  if (!obj) return;
+  
+  console.log('🔵 switchScene: sceneId=' + sceneId + ', yaw=' + (yaw !== undefined ? radToDeg(yaw).toFixed(2) + '°' : 'undefined') + ', pitch=' + (pitch !== undefined ? radToDeg(pitch).toFixed(2) + '°' : 'undefined'));
+  
+  currentSceneObj = obj; currentScene = obj.scene; currentView = obj.view;
+  
+  // ★修正：yaw/pitch が指定されていない場合、initialViewParameters から取得
+  var targetYaw = yaw;
+  var targetPitch = pitch;
+  
+  if (initialYaw !== null) {
+    targetYaw = degToRad(parseFloat(initialYaw));
+    initialYaw = null;
+  } else if (targetYaw === undefined) {
+    // yaw が指定されていない場合は、initialViewParameters から使用
+    targetYaw = obj.data.initialViewParameters?.yaw;
+  }
+  
+  if (targetPitch === undefined) {
+    // pitch が指定されていない場合は、initialViewParameters から使用
+    targetPitch = obj.data.initialViewParameters?.pitch;
+  }
+  
+  var targetFov = fov !== undefined ? fov : currentView.parameters().fov;
+
+  // ★ 53-cc001 移動時のフェードイン処理（必ず switchTo() の前に実行）
+  var is53cc001 = (sceneId === '53-cc001');
+  if (is53cc001) {
+    var overlay = document.getElementById('fadeOverlay');
+    overlay.style.opacity = '1';
+    console.log('✨ 53-cc001: オーバーレイを白く表示（switchTo前）');
+  }
+
+  var crossfadeDur=(typeof autoMoveActive!=='undefined'&&autoMoveActive)?Math.min(2000,Math.round(autoMoveInterval_ms*autoFadePct)):700;
+  currentScene.switchTo({ transitionDuration: crossfadeDur });
+
+  // ★修正：switchTo の後に setParameters（穴森神社方式）
+  if (targetYaw !== undefined && targetPitch !== undefined) {
+    console.log('   → 実際に設定: yaw=' + radToDeg(normalizeAngle(targetYaw)).toFixed(2) + '°, pitch=' + radToDeg(targetPitch).toFixed(2) + '°');
+    currentView.setParameters({ yaw: targetYaw, pitch: targetPitch, fov: targetFov });
+  }
+  
+  // ===== infoHotspot テキスト表示（1シーン1回限り・7秒後フェードアウト） =====
+  var textEl = document.getElementById('sceneText');
+  // 【診断ログ】data.jsのinfoHotspotsを毎回確認
+  var _ihs = obj.data.infoHotspots;
+  console.log('📝 [infoHotspot診断] sceneId=' + sceneId
+    + ' | 件数=' + (_ihs ? _ihs.length : 0)
+    + ' | text=' + (_ihs && _ihs[0] ? _ihs[0].text : 'なし')
+    + ' | 既表示=' + !!window.shownTextScenes[sceneId]);
+  if (obj.data.infoHotspots && obj.data.infoHotspots.length > 0 && obj.data.infoHotspots[0].text) {
+    if (!window.shownTextScenes[sceneId]) {
+      // このシーンはまだ未表示 → 表示する
+      window.shownTextScenes[sceneId] = true;
+      var hs = obj.data.infoHotspots[0];
+      var hsStyle = hs.style || {};
+      textEl.textContent = hs.text;
+      textEl.style.fontSize = hsStyle.fontSize || '20px';
+      textEl.style.fontFamily = hsStyle.fontFamily || 'sans-serif';
+      textEl.style.color = hsStyle.color || '#ffffff';
+      // pitch → 画面の縦位置（bottom %）
+      var hsPitch = typeof hs.pitch === 'number' ? hs.pitch : 0.9;
+      var bottomPct = Math.round(((1.5 - hsPitch) / 3.0) * 100);
+      bottomPct = Math.max(2, Math.min(92, bottomPct));
+      textEl.style.bottom = bottomPct + '%';
+      // yaw → 画面の横位置（left %）
+      var hsYaw = typeof hs.yaw === 'number' ? hs.yaw : 0;
+      var leftPct = Math.round(((hsYaw + Math.PI) / (2 * Math.PI)) * 100);
+      leftPct = Math.max(10, Math.min(90, leftPct));
+      textEl.style.left = leftPct + '%';
+      textEl.style.transition = 'none';
+      textEl.style.opacity = '0';
+      textEl.style.display = 'inline-block';
+      textEl.getBoundingClientRect(); // 強制リフロー：opacity:0 を確定させる
+      textEl.style.transition = 'opacity 1s ease';
+      textEl.style.opacity = '1';
+      // 既存タイマーをリセット
+      if (window.sceneTextTimer) { clearTimeout(window.sceneTextTimer); }
+      // 7秒後にフェードアウト開始（6.75秒かけて消える）
+      window.sceneTextTimer = setTimeout(function() {
+        textEl.style.transition = 'opacity 6.75s ease';
+        textEl.style.opacity = '0';
+        setTimeout(function() { textEl.style.display = 'none'; }, 6750);
+      }, 7000);
+    } else {
+      // 再訪問 → 表示しない
+      if (window.sceneTextTimer) { clearTimeout(window.sceneTextTimer); }
+      textEl.style.display = 'none';
+    }
+  } else {
+    if (window.sceneTextTimer) { clearTimeout(window.sceneTextTimer); }
+    textEl.style.display = 'none';
+  }
+  
+  // ★ 53-cc001: 2秒後にオーバーレイをフェードアウト
+  if (is53cc001) {
+    setTimeout(function() {
+      var overlay = document.getElementById('fadeOverlay');
+      overlay.style.opacity = '0';  // ★ 2秒かけてフェードアウト（CSS transition で自動）
+      console.log('✨ 53-cc001: フェードアウト開始');
+    }, 700);  // ★ switchTo の transitionDuration (700ms) 後に開始
+  }
+  
+  if (counterEl) counterEl.textContent = obj.data.position;
+  // ★ BGM処理：シーン切り替え時に再生（地図ON/OFF＋長押し状態に従う）
+  playSceneBGM(sceneId);
+  
+  showUI();
+  
+  // ★imageHotspots処理（bb001の和傘画像）
+  if (sceneId === "8-bb001") {
+    window.umbrellaHotspotCreated = false;  // bb001到達時にフラグをリセット
+  }
+  
+  if (obj.data.imageHotspots) {
+    obj.data.imageHotspots.forEach(function(ih) {
+      var img = document.createElement('img');
+      img.src = ih.src;
+      img.className = 'image-hotspot';
+      img.style.cssText = [
+        'width:' + (ih.width || 400) + 'px',
+        'height:' + (ih.height || 300) + 'px',
+        'object-fit:cover',
+        'opacity:0',
+        'transition:opacity 5s ease-in-out',
         'cursor:pointer',
-        '-webkit-mask-image:linear-gradient(to bottom,transparent 0%,black '+fade+'%,black '+(100-fade)+'%,transparent 100%),linear-gradient(to right,transparent 0%,black '+fade+'%,black '+(100-fade)+'%,transparent 100%)',
-        '-webkit-mask-composite:destination-in',
-        'mask-image:linear-gradient(to bottom,transparent 0%,black '+fade+'%,black '+(100-fade)+'%,transparent 100%),linear-gradient(to right,transparent 0%,black '+fade+'%,black '+(100-fade)+'%,transparent 100%)',
-        'mask-composite:intersect'
+        'pointer-events:none'
       ].join(';');
-      var vid = document.createElement('video');
-      vid.src = vh.src; vid.loop = true; vid.playsInline = true;
-      vid.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;';
-      vid.className = 'scene-video';
-      // autoplay指定がある場合は自動再生、ない場合は長押し待ち
-      if (vh.autoplay) {
-        vid.autoplay = true;
-        vid.muted = true;
-      } else {
-        vid.muted = true; // 長押しまでミュート待機
-      }
-      wrap.addEventListener('click', function(e) {
+      
+      // ★和傘クリックでcc001に移動
+      img.addEventListener('click', function(e) {
         e.stopPropagation();
-        if (vid.paused) { vid.muted = false; vid.play(); } else { vid.muted = !vid.muted; }
+        if (currentSceneObj.data.id === "8-bb001" && window.umbrellaHotspotCreated) {
+          console.log('🎎 和傘クリック → cc001 に移動');
+          switchScene('26-cc001');
+        }
       });
-      wrap.appendChild(vid);
-      scene.hotspotContainer().createHotspot(wrap,
-        { yaw: vh.yaw||0, pitch: vh.pitch||0 },
-        { perspective: { radius: vh.radius||800 } }
+      
+      currentScene.hotspotContainer().createHotspot(img,
+        { yaw: ih.yaw || 0, pitch: ih.pitch || 0 },
+        { perspective: { radius: ih.radius || 800 } }
       );
     });
   }
-});
-
-/* ------------------------------
-   文字ホットスポット表示
------------------------------- */
-function showTextHotspot(sceneId) {
-  var sceneObj = scenesData[sceneId];
-  if (!sceneObj) return;
-
-  if (sceneObj.data.direction !== 'iki') {
-    hideTextHotspot();
-    return;
-  }
-
-  if (visitedScenes[sceneId]) {
-    hideTextHotspot();
-    return;
-  }
-
-  var hotspots = sceneObj.data.infoHotspots;
-  if (!hotspots || hotspots.length === 0) {
-    hideTextHotspot();
-    return;
-  }
-
-  var hotspot = hotspots[0];
-  if (hotspot.text) {
-    // x・y・size・color・fontをdata.jsから反映
-    textHotspotElement.style.left     = (hotspot.x !== undefined ? hotspot.x : 5) + '%';
-    textHotspotElement.style.top      = (hotspot.y !== undefined ? hotspot.y : 85) + '%';
-    textHotspotElement.style.bottom   = 'auto';
-    var p = textHotspotElement.querySelector('p') || textHotspotElement;
-    p.style.fontSize   = (hotspot.size !== undefined ? hotspot.size : 20) + 'px';
-    p.style.color      = hotspot.color || '#ffffff';
-    p.style.fontFamily = hotspot.font || "'Meiryo',sans-serif";
-    p.style.fontWeight = hotspot.bold || 'bold';
-    var s = hotspot.shadow !== undefined ? hotspot.shadow : 0.6;
-    p.style.textShadow = s > 0 ?
-      '2px 2px 4px rgba(0,0,0,'+s+'), -2px 2px 4px rgba(0,0,0,'+s+'), 2px -2px 4px rgba(0,0,0,'+s+'), -2px -2px 4px rgba(0,0,0,'+s+')' :
-      'none';
-    p.textContent = hotspot.text;
-
-    setTimeout(function() {
-      textHotspotElement.classList.add('visible');
-    }, 500);
-
-    setTimeout(function() {
-      hideTextHotspot();
-    }, 7000);
-
-    visitedScenes[sceneId] = true;
-  } else {
-    hideTextHotspot();
-  }
 }
 
-function hideTextHotspot() {
-  textHotspotElement.classList.remove('visible');
-}
+function updateUI() {
+  if (!currentView) return;
+  var yawDeg = radToDeg(normalizeAngle(currentView.parameters().yaw));
+  var pitch = radToDeg(currentView.parameters().pitch);
 
-/* ------------------------------
-   シーン切替
------------------------------- */
-function switchScene(sceneId, yaw, pitch) {
-  var newSceneObj = scenesData[sceneId];
-  if (!newSceneObj) return;
+  document.getElementById('yawTxt').textContent = Math.round(yawDeg) + '°';
+  document.getElementById('pitchTxt').textContent = Math.round(pitch) + '°';
+  document.getElementById('compassNeedle').style.transform = 'rotate(' + (-yawDeg) + 'deg)';
 
-  currentSceneObj = newSceneObj;
-  currentScene = newSceneObj.scene;
-  currentView = newSceneObj.view;
-
-  currentScene.switchTo({
-    transitionDuration: 500
-  });
-
-  if (typeof yaw !== 'undefined' && typeof pitch !== 'undefined') {
-    currentView.setParameters({ yaw: yaw, pitch: pitch });
-  }
-
-  var counter = document.getElementById('counter');
-  counter.textContent = currentSceneObj.data.position;
-
-  // ❺ bgmENABLEDなら新シーンでも自動再生、❹ OFFなら止める
-  if (bgmEnabled) {
-    playPositionSound(currentSceneObj.data.position);
-    playSceneVideos();
-  } else {
-    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
-    // シーン切替時に前シーンの動画を止める
-    var oldVids = document.querySelectorAll('.scene-video');
-    oldVids.forEach(function(v) { v.pause(); });
-  }
-
-  showTextHotspot(sceneId);
-  updateArrowVisibility();
-}
-
-/* ------------------------------
-   角度計算
------------------------------- */
-function normalizeAngle(angle) {
-  while (angle > Math.PI) angle -= 2 * Math.PI;
-  while (angle < -Math.PI) angle += 2 * Math.PI;
-  return angle;
-}
-function degToRad(deg) { return deg * Math.PI / 180; }
-function radToDeg(rad) { return rad * 180 / Math.PI; }
-
-/* ------------------------------
-   角度表示の更新
------------------------------- */
-function updateAngleDisplay() {
-  if (!currentView || !debugMode) return;
-  
-  var params = currentView.parameters();
-  var yawDeg = Math.round(radToDeg(normalizeAngle(params.yaw)));
-  var pitchDeg = Math.round(radToDeg(params.pitch));
-  
-  angleYaw.textContent = yawDeg + '°';
-  anglePitch.textContent = pitchDeg + '°';
-}
-
-/* ------------------------------
-   コンパスの更新（全デバイス共通：VR画面のyaw角度に連動）
------------------------------- */
-function updateCompass() {
-  if (!debugMode || !currentView) return;
-  
-  // headingデータがない場合はコンパスを非表示にする
-  if (!currentSceneObj || currentSceneObj.data.heading === undefined || currentSceneObj.data.heading === null || currentSceneObj.data.heading === '') {
-    compass.classList.remove('active');
-    return;
-  }
-  
-  // headingデータがある場合のみコンパスを表示
-  compass.classList.add('active');
-  
-  var params = currentView.parameters();
-  var yawDeg = radToDeg(normalizeAngle(params.yaw));
-  var rotation = currentSceneObj.data.heading - yawDeg;
-  
-  compassRose.style.transform = 'rotate(' + rotation + 'deg)';
-}
-
-/* ------------------------------
-   デバッグモード切り替え
------------------------------- */
-function toggleDebugMode() {
-  debugMode = !debugMode;
-  
-  if (debugMode) {
-    angleDisplay.classList.add('active');
-    centerCross.classList.add('active');
-    // コンパスはheadingデータがある場合のみ表示
-    if (currentSceneObj && currentSceneObj.data.heading !== undefined && currentSceneObj.data.heading !== null && currentSceneObj.data.heading !== '') {
-      compass.classList.add('active');
-    }
-  } else {
-    angleDisplay.classList.remove('active');
-    centerCross.classList.remove('active');
-    compass.classList.remove('active');
-  }
-}
-
-/* ------------------------------
-   矢印表示制御
------------------------------- */
-function updateArrowVisibility() {
-  if (!currentView || !currentSceneObj) return;
-
-  var params = currentView.parameters();
-  var currentYawDeg = Math.abs(radToDeg(normalizeAngle(params.yaw)));
-
-  var arrowUp = document.getElementById('arrowUp');
-  var arrowDown = document.getElementById('arrowDown');
-  var arrowLeft = document.getElementById('arrowLeft');
-  var arrowRight = document.getElementById('arrowRight');
-
-  if (currentYawDeg <= 45 || currentYawDeg > 135) {
-    arrowUp.style.display = 'block';
-    arrowDown.style.display = 'block';
-    arrowLeft.style.display = 'none';
-    arrowRight.style.display = 'none';
-  } else {
-    arrowUp.style.display = 'none';
-    arrowDown.style.display = 'none';
-    arrowLeft.style.display = 'block';
-    arrowRight.style.display = 'block';
-  }
-}
-
-/* ------------------------------
-   自動シーン切替（往復）+ 角度更新
------------------------------- */
-setInterval(function() {
-  if (!currentView || !currentSceneObj) return;
-
-  var params = currentView.parameters();
-  var currentYaw = normalizeAngle(params.yaw);
-
-  updateArrowVisibility();
-  updateAngleDisplay(); // 角度表示を更新
-  updateCompass();      // コンパスを更新
-
-  if (currentYaw > degToRad(SWITCH_THRESHOLD) || currentYaw < -degToRad(SWITCH_THRESHOLD)) {
-    var pairSceneId = currentSceneObj.data.pair;
-    if (!pairSceneId) return;
-
-    var newYaw = currentYaw > 0 ? currentYaw - Math.PI : currentYaw + Math.PI;
-    switchScene(pairSceneId, newYaw, params.pitch);
-  }
-}, 100);
-
-/* ------------------------------
-   音量スライダー
------------------------------- */
-var volumeSlider = document.getElementById('volumeSlider');
-volumeSlider.addEventListener('input', function() {
-  currentVolume = this.value;
-  if (currentAudio) currentAudio.volume = currentVolume;
-});
-
-/* ------------------------------
-   BGM再生（長押し時のみ・そのシーンのposition*.mp3があれば）
------------------------------- */
-// BGM継続グループ設定: 同じグループは同じファイルを継続再生
-var BGM_GROUPS = {
-  1: { file: 'sounds/position1.mp3', loop: true },
-  2: { file: 'sounds/position1.mp3', loop: true },
-  3: { file: 'sounds/position1.mp3', loop: true }
-};
-
-function playPositionSound(position) {
-  if (!audioEnabled) return;
-
-  // グループ設定があればそのファイル、なければ従来通り
-  var group = BGM_GROUPS[position];
-  var file = group ? group.file : ('sounds/position' + position + '.mp3');
-  var doLoop = group ? group.loop : false;
-
-  // 既に同じファイルが再生中なら止めない（継続）
-  if (currentAudio && currentAudio._posFile === file && !currentAudio.paused) return;
-
-  // 別のファイルが再生中なら止める
-  if (currentAudio && currentAudio._posFile !== file) {
-    currentAudio.pause();
-    currentAudio = null;
-  }
-
-  var audio = new Audio(file);
-  audio.volume = currentVolume;
-  audio._posFile = file;
-  audio.loop = doLoop;
-
-  audio.onerror = function() { currentAudio = null; };
-
+  // ★ホットスポットエディタ連携：現在の向きをlocalStorageに書き込む
   try {
-    var track = audioCtx.createMediaElementSource(audio);
-    track.connect(audioCtx.destination);
+    localStorage.setItem('hs_sceneId', currentSceneObj ? currentSceneObj.data.id : '');
+    localStorage.setItem('hs_yaw',   currentView.parameters().yaw);
+    localStorage.setItem('hs_pitch', currentView.parameters().pitch);
   } catch(e) {}
 
-  audio.play().catch(function(e) { currentAudio = null; });
-  currentAudio = audio;
-}
+  var yawAbs = Math.abs(yawDeg);
+  var isVert = yawAbs <= 45 || yawAbs > 135;
+  document.getElementById('arrowUp').style.visibility = isVert ? 'visible' : 'hidden';
+  document.getElementById('arrowDown').style.visibility = isVert ? 'visible' : 'hidden';
+  document.getElementById('arrowLeft').style.visibility = isVert ? 'hidden' : 'visible';
+  document.getElementById('arrowRight').style.visibility = isVert ? 'hidden' : 'visible';
 
-function showVolumeAndPlayBGM() {
-  audioEnabled = true;
-  bgmEnabled = true;
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-
-  var vc = document.getElementById('volumeContainer');
-  vc.classList.add('visible');
-  if (volumeHideTimer) clearTimeout(volumeHideTimer);
-  volumeHideTimer = setTimeout(function() {
-    vc.classList.remove('visible');
-  }, 5000);
-
-  if (currentSceneObj) playPositionSound(currentSceneObj.data.position);
-
-  // 現在のシーンに動画ホットスポットがあれば再生
-  playSceneVideos();
-
-  // 光演出を開始
-  if (window._lightCanvases) {
-    window._lightCanvases.forEach(function(cv) {
-      cv.style.opacity = '1';
-    });
-  }
-
-  if (bgmOffTimer) clearTimeout(bgmOffTimer);
-  bgmOffTimer = setTimeout(function() {
-    bgmEnabled = false;
-    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
-    // 光演出もフェードアウト
-    if (window._lightCanvases) {
-      window._lightCanvases.forEach(function(cv) {
-        cv.style.opacity = '0';
-      });
-    }
-  }, BGM_TIMEOUT_MS);
-}
-
-// 現在シーンの動画を再生（長押し時に呼ばれる）
-function playSceneVideos() {
-  var vids = document.querySelectorAll('.scene-video');
-  vids.forEach(function(vid) {
-    if (vid.paused) {
-      vid.muted = false;
-      vid.play().catch(function() { vid.muted = true; vid.play(); });
-    }
-  });
-}
-
-/* ------------------------------
-   初回タップで AudioContext を起こすだけ（BGMは長押しまで鳴らない）
------------------------------- */
-function tryEnableAudio() {
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-}
-document.addEventListener('click', tryEnableAudio, { once: true });
-document.addEventListener('touchstart', tryEnableAudio, { once: true });
-
-/* ------------------------------
-   地図へ戻る
------------------------------- */
-window.goToMap = function() {
-  if (currentAudio) currentAudio.pause();
-  bgmEnabled = false;
-  if (bgmOffTimer) clearTimeout(bgmOffTimer);
-  visitedScenes = {};
-  // ローカルならmap.html、GitHubならindex.html
-  var mapFile = window.location.hostname === 'localhost' || window.location.protocol === 'file:' 
-    ? '../map.html' 
-    : '../index.html';
   
-  window.location.href = mapFile;
-};
-/* ------------------------------
-   カウンターのダブルタップでデバッグモード切り替え
------------------------------- */
-var counter = document.getElementById('counter');
-var counterLongPressTimer = null;
-var counterLongPressed = false;
-
-counter.addEventListener('mousedown', function(e) {
-  counterLongPressed = false;
-  counterLongPressTimer = setTimeout(function() {
-    counterLongPressed = true;
-    showVolumeAndPlayBGM();
-  }, 600);
-});
-counter.addEventListener('mouseup', function(e) {
-  clearTimeout(counterLongPressTimer);
-  if (!counterLongPressed) {
-    // シングルクリックでデバッグモード切り替え（ダブルタップの代わり）
-    var now = Date.now();
-    var timeSinceLastTap = now - counterLastTapTime;
-    if (timeSinceLastTap < 300 && timeSinceLastTap > 0) {
-      toggleDebugMode();
-      counterLastTapTime = 0;
-    } else {
-      counterLastTapTime = now;
+  // ★bb001での和傘表示（1回限り、70～110度に到達したら）
+  if (currentSceneObj.data.id === "8-bb001" && !window.umbrellaHotspotCreated) {
+    if (yawDeg >= 70 && yawDeg <= 110) {
+      window.umbrellaHotspotCreated = true;
+      var umbrellaImg = document.querySelector('.image-hotspot');
+      if (umbrellaImg) {
+        // フェードイン：5秒
+        umbrellaImg.style.opacity = '1';
+        umbrellaImg.style.pointerEvents = 'auto';  // ★クリック有効化
+        console.log('🎎 和傘フェードイン開始（70～110度に到達）');
+        
+        // 6秒後にフェードアウト開始（5秒フェードイン + 1秒表示）
+        setTimeout(function() {
+          if (umbrellaImg) {
+            umbrellaImg.style.opacity = '0';
+            umbrellaImg.style.pointerEvents = 'none';  // ★クリック無効化
+            console.log('🎎 和傘フェードアウト開始');
+          }
+        }, 6000);
+      }
     }
   }
-});
-counter.addEventListener('mouseleave', function() { clearTimeout(counterLongPressTimer); });
+  // 緑矢印の表示制御（複数脇道対応）
+  document.getElementById('arrowUpGreen').style.visibility = (function() {
+    if (!currentSceneObj) {
+      console.log('🔴 currentSceneObj is null');
+      return 'hidden';
+    }
+    if (!window.greenArrowConfig || window.greenArrowConfig.arrows.length === 0) {
+      console.log('🔴 window.greenArrowConfig.arrows is empty');
+      return 'hidden';
+    }
+    
+    var yawDeg = radToDeg(normalizeAngle(currentView.parameters().yaw));
+    console.log('🔍 updateUI check - currentScene:', currentSceneObj.data.id, 'yawDeg:', Math.round(yawDeg), 'arrows count:', window.greenArrowConfig.arrows.length);
+    
+    // すべての脇道をチェック
+    for (var i = 0; i < window.greenArrowConfig.arrows.length; i++) {
+      var arrow = window.greenArrowConfig.arrows[i];
+      console.log('🔍 arrow ' + i + ':', 'sceneId=' + arrow.sceneId, 'range=' + arrow.startAngle + '～' + arrow.endAngle);
+      
+      // シーンID一致 & 角度範囲内か確認
+      if (currentSceneObj.data.id === arrow.sceneId) {
+        console.log('🔍 Scene match! Checking angle...');
+        var isInRange = false;
+        if (arrow.startAngle <= arrow.endAngle) {
+          isInRange = yawDeg >= arrow.startAngle && yawDeg <= arrow.endAngle;
+        } else {
+          isInRange = yawDeg >= arrow.endAngle && yawDeg <= arrow.startAngle;
+        }
+        
+        if (isInRange) {
+          console.log('🟢 GREEN ARROW VISIBLE!', {sceneId: arrow.sceneId, yaw: Math.round(yawDeg), range: arrow.startAngle + '～' + arrow.endAngle});
+          return 'visible';
+        } else {
+          console.log('🟡 Angle mismatch:', yawDeg, 'not in range', arrow.startAngle + '～' + arrow.endAngle);
+        }
+      } else {
+        console.log('🟡 Scene mismatch:', currentSceneObj.data.id, '!==', arrow.sceneId);
+      }
+    }
+    return 'hidden';
+  })();
+}
 
-counter.addEventListener('touchstart', function(e) {
-  e.preventDefault();
-  counterLongPressed = false;
-  counterLongPressTimer = setTimeout(function() {
-    counterLongPressed = true;
-    showVolumeAndPlayBGM();
-  }, 600);
-}, { passive: false });
-counter.addEventListener('touchend', function(e) {
-  e.preventDefault();
-  clearTimeout(counterLongPressTimer);
-  if (!counterLongPressed) {
-    var now = Date.now();
-    var timeSinceLastTap = now - counterLastTapTime;
-    if (timeSinceLastTap < 300 && timeSinceLastTap > 0) {
-      toggleDebugMode();
-      counterLastTapTime = 0;
-    } else {
-      counterLastTapTime = now;
+setInterval(updateUI, 100);
+console.log('✅ setInterval(updateUI, 100) started');
+
+document.getElementById('volumeSlider').addEventListener('input', function(e) {
+  bgmVolume = Math.max(0, Math.min(1, parseFloat(e.target.value)));
+  _save('vol',bgmVolume);
+  Object.keys(bgmAudios).forEach(function(key) {
+    if (bgmAudios[key]) bgmAudios[key].volume = bgmVolume;
+  });
+});
+setTimeout(function(){var v=parseFloat(_load('vol','0.5'));bgmVolume=v;document.getElementById('volumeSlider').value=v;},100);
+
+var speedLabels=['','激遅','遅い','やや遅','少し遅','普通','少し速','やや速','速い','激速'];
+function speedToMs(v){return Math.round(2500-(v-1)*(2500-1000)/8);}
+document.getElementById('speedSlider').addEventListener('input',function(e){
+  var v=parseInt(e.target.value);autoMoveInterval_ms=speedToMs(v);
+  document.getElementById('speedVal').textContent=speedLabels[v]||v;_save('speed',v);if(autoMoveActive)startContinuousZoom();
+});
+var zoomLabels=['','ゼロ','極小','やや小','少小','中','少大','やや大','大','極大'];
+function zoomToMin(v){return v===1?breathMax:+(breathMax-(v-1)*1.0).toFixed(1);}
+document.getElementById('zoomSlider').addEventListener('input',function(e){
+  var v=parseInt(e.target.value);breathMin=zoomToMin(v);
+  document.getElementById('zoomVal').textContent=zoomLabels[v]||v;_save('zoom',v);if(autoMoveActive)startContinuousZoom();
+});
+var fadeLabels=['','なし','極小','小','やや小','中','やや大','大','極大','最大'];
+function fadeToPct(v){return(v-1)/8;}
+document.getElementById('fadeSlider').addEventListener('input',function(e){
+  var v=parseInt(e.target.value);autoFadePct=fadeToPct(v);
+  document.getElementById('fadeVal').textContent=fadeLabels[v]||v;_save('fade',v);
+});
+setTimeout(function(){
+  var s=Math.max(1,Math.min(9,parseInt(_load('speed','5'))));document.getElementById('speedSlider').value=s;autoMoveInterval_ms=speedToMs(s);document.getElementById('speedVal').textContent=speedLabels[s]||s;
+  var z=Math.max(1,Math.min(9,parseInt(_load('zoom','1'))));document.getElementById('zoomSlider').value=z;breathMin=zoomToMin(z);document.getElementById('zoomVal').textContent=zoomLabels[z]||z;
+  var f=Math.max(1,Math.min(9,parseInt(_load('fade','3'))));document.getElementById('fadeSlider').value=f;autoFadePct=fadeToPct(f);document.getElementById('fadeVal').textContent=fadeLabels[f]||f;
+},100);
+
+function executeMove(isUp) {
+  var yaw = normalizeAngle(currentView.parameters().yaw);
+  var isLookingFront = Math.abs(radToDeg(yaw)) <= 90;
+  
+  // ★特別ケース1（無効化）：7-aa008 → bb001 は「扉クリック」でのみ移動
+  
+  // ★特別ケース2：bb001 から aa017 へ（戻る）
+  if (currentSceneObj.data.id === "8-bb001") {
+    var shouldReturn = (isLookingFront && !isUp) || (!isLookingFront && isUp);
+    if (shouldReturn) {
+      console.log('🚀 bb001 → aa017 に戻る');
+      switchScene("7-aa008", yaw, currentView.parameters().pitch, currentView.parameters().fov);
+      return;
     }
   }
-});
+  
+  // ★特別ケース3：cc001は終点（戻る機能なし）
+  if (currentSceneObj.data.id === "26-cc001") {
+    console.log('🎎 cc001は終点です。移動できません。');
+    return;
+  }
+  
+  // bb/cc での動作分岐（全シーン対応：bb01, bb02, bb03... / cc01, cc02, cc03...）
+  if (isSideRoute(currentSceneObj.data.id)) {
+    if (window.returnScene) {
+      // 脇道経由：戻る条件をチェック
+      var returnScene = window.returnScene;
+      var shouldReturn = false;
+      
+      if (isSideRoute(currentSceneObj.data.id)) {
+        shouldReturn = (isUp && !isLookingFront) || (!isUp && isLookingFront);
+      }
+      
+      if (shouldReturn) {
+        // bb/cc内に次のシーンがあるか確認
+        var moveDelta = (isLookingFront ? 1 : -1) * (isUp ? 1 : -1);
+        var moveNextPos = currentSceneObj.data.position + moveDelta;
+        var nextSceneId = null;
+        for (var tid in scenesData) {
+          if (scenesData[tid].data.position === moveNextPos && scenesData[tid].data.direction === currentSceneObj.data.direction) {
+            nextSceneId = tid;
+            break;
+          }
+        }
+        if (nextSceneId) {
+          // 次のシーンがある → bb/cc内を移動（aaには戻らない）
+          switchScene(nextSceneId, yaw, currentView.parameters().pitch, currentView.parameters().fov);
+          return;
+        }
+        // 次のシーンがない → aaに戻る（cc/bbの現在yawから逆算）
+        stopAutoMove();
+        if (window.returnScene && window.departureYaw !== null) {
+          var currentYaw = currentView.parameters().yaw;
+          var entryInitYaw = window.entryInitialYaw || 0;
+          var returnYaw;
+          var storedOffset = window.entryYawOffset || 0;
+          if (isLeftSide(currentSceneObj.data.id)) {
+            returnYaw = normalizeAngle(currentYaw - entryInitYaw - degToRad(90) - storedOffset);
+          } else if (isRightSide(currentSceneObj.data.id)) {
+            returnYaw = normalizeAngle(currentYaw - entryInitYaw + degToRad(90) - storedOffset);
+          } else {
+            returnYaw = currentYaw;
+          }
+          var retPitch = window.departurePitch !== undefined ? window.departurePitch : currentView.parameters().pitch;
+          switchScene(returnScene, returnYaw, retPitch, currentView.parameters().fov);
+        } else {
+          switchScene(returnScene, currentView.parameters().yaw, currentView.parameters().pitch, currentView.parameters().fov);
+        }
+        return;
+      }
+      // ★shouldReturn が false の場合は、以下のコース内移動を実行
+    }
+    
+    // ★bb/cc コース内を前後移動
+    console.log('📍 ' + currentSceneObj.data.id + ' コース内を移動');
+    var delta = (isLookingFront ? 1 : -1) * (isUp ? 1 : -1);
+    var nextPos = currentSceneObj.data.position + delta;
+    for (var id in scenesData) {
+      if (scenesData[id].data.position === nextPos && scenesData[id].data.direction === currentSceneObj.data.direction) {
+        // 相対yaw引き継ぎ：現シーンの初期yawからのズレ分を次シーンの初期yawに加算
+        var curInitYaw = currentSceneObj.data.initialViewParameters.yaw;
+        var nxtInitYaw = scenesData[id].data.initialViewParameters.yaw;
+        var relYaw = normalizeAngle(yaw - curInitYaw);
+        var adjustedYaw = normalizeAngle(nxtInitYaw + relYaw);
+        switchScene(id, adjustedYaw, undefined, currentView.parameters().fov);
+        return;
+      }
+    }
+    return;
+  }
 
-/* ------------------------------
-   移動処理
------------------------------- */
-/* ------------------------------
-   移動処理（確定修正版：180度逆転対策）
------------------------------- */
-function executeMoveByDelta(delta) {
-  if (!currentView || !currentSceneObj) return;
-
+  // aa での通常の移動処理
+  var delta = (isLookingFront ? 1 : -1) * (isUp ? 1 : -1);
+  if (flipDir) delta = -delta;
   var nextPos = currentSceneObj.data.position + delta;
-
-  // 最終シーンを超えて前進した場合、次のツアーへ
-  if (nextPos > maxPosition && delta > 0) {
-    if (typeof APP_DATA !== 'undefined' && APP_DATA.nextTour) {
-      window.location.href = APP_DATA.nextTour;
-    }
-    return;
-  }
-  // 最初のシーンを超えて後退した場合、前のツアーへ
-  if (nextPos < 1 && delta < 0) {
-    if (typeof APP_DATA !== 'undefined' && APP_DATA.prevTour) {
-      window.location.href = APP_DATA.prevTour;
-    }
-    return;
-  }
-
-  if (nextPos < 1 || nextPos > maxPosition) return;
-
   for (var id in scenesData) {
-    if (scenesData[id].data.position === nextPos &&
-        scenesData[id].data.direction === currentSceneObj.data.direction) {
-      switchScene(id, currentView.parameters().yaw, currentView.parameters().pitch);
+    if (scenesData[id].data.position === nextPos && scenesData[id].data.direction === currentSceneObj.data.direction) {
+      // 相対yaw引き継ぎ：現シーンの初期yawからのズレ分を次シーンの初期yawに加算
+      var curInitYaw = currentSceneObj.data.initialViewParameters.yaw;
+      var nxtInitYaw = scenesData[id].data.initialViewParameters.yaw;
+      var relYaw = normalizeAngle(yaw - curInitYaw);
+      var adjustedYaw = Math.abs(radToDeg(relYaw)) < 15 ? undefined : normalizeAngle(nxtInitYaw + relYaw);
+      switchScene(id, adjustedYaw, undefined, currentView.parameters().fov);
       return;
     }
   }
 }
 
-window.moveForward = function() {
-  var yaw = normalizeAngle(currentView.parameters().yaw);
-  var isLookingFront = Math.abs(radToDeg(yaw)) <= 90;
-  var delta;
+// ★ 自動再生（ズームインのみ・黒画面なし）コースごと完全独立保存
+var autoMoveInterval_ms=1875;
+var breathMax=75,breathMin=75,breathFov=breathMax,autoFadePct=0.175;
+var autoMoveTimer=null,autoMoveInterval=null,autoZoomInterval=null;
+var autoMoveActive=false,autoStepping=false;
 
-  if (currentSceneObj.data.direction === 'iki') {
-    // 行きシーン：正面なら+1（進む）、後ろなら-1（戻る）
-    delta = isLookingFront ? 1 : -1;
-  } else {
-    // 帰りシーン：正面なら-1（進む）、後ろなら+1（戻る）
-    delta = isLookingFront ? -1 : 1;
-  }
-  executeMoveByDelta(delta);
-};
+// キー：URL+タイトル → aaとcc、異なるファイルで完全に区別される
+function _ck(){return 'ap_'+(location.href+document.title).replace(/[^a-zA-Z0-9]/g,'_')+'_';}
+function _save(k,v){try{localStorage.setItem(_ck()+k,String(v));}catch(e){}}
+function _load(k,def){try{var v=localStorage.getItem(_ck()+k);return v!==null?v:def;}catch(e){return def;}}
 
-window.moveBackward = function() {
-  var yaw = normalizeAngle(currentView.parameters().yaw);
-  var isLookingFront = Math.abs(radToDeg(yaw)) <= 90;
-  var delta;
-
-  if (currentSceneObj.data.direction === 'iki') {
-    // 行きシーン：正面なら-1（下がる）、後ろなら+1（引き返す）
-    delta = isLookingFront ? -1 : 1;
-  } else {
-    // 帰りシーン：正面なら+1（下がる）、後ろなら-1（引き返す）
-    delta = isLookingFront ? 1 : -1;
-  }
-  executeMoveByDelta(delta);
-};
-
-window.moveLeft = function() {
-  var yaw = normalizeAngle(currentView.parameters().yaw);
-  // 横移動は「景色が流れる方向」に合わせるため、絶対的なdeltaで制御
-  if (yaw < 0) {
-    executeMoveByDelta(-1);
-  } else {
-    executeMoveByDelta(1);
-  }
-};
-
-window.moveRight = function() {
-  var yaw = normalizeAngle(currentView.parameters().yaw);
-  if (yaw > 0) {
-    executeMoveByDelta(-1);
-  } else {
-    executeMoveByDelta(1);
-  }
-};
-
-/* ------------------------------
-   UI 自動フェード
------------------------------- */
-var uiElements = [
-  document.getElementById('mapButton'),
-  document.getElementById('counter'),
-  document.getElementById('arrowUp'),
-  document.getElementById('arrowDown'),
-  document.getElementById('arrowLeft'),
-  document.getElementById('arrowRight')
-];
-
-var hideTimer = null;
-
-function showUI() {
-  uiElements.forEach(function(el) { if (el) el.classList.add('visible'); });
-
-  if (hideTimer) clearTimeout(hideTimer);
-
-  hideTimer = setTimeout(function() {
-    uiElements.forEach(function(el) { if (el) el.classList.remove('visible'); });
-  }, 2000);
+function startContinuousZoom(){
+  if(autoZoomInterval){clearInterval(autoZoomInterval);autoZoomInterval=null;}
+  breathFov=breathMax;
+  if(currentView)currentView.setParameters({fov:degToRad(breathFov)});
+  var stepMs=50,range=breathMax-breathMin;
+  if(range<=0)return;
+  var degsPerStep=range/(autoMoveInterval_ms/stepMs);
+  autoZoomInterval=setInterval(function(){
+    if(!autoMoveActive||!currentView){clearInterval(autoZoomInterval);autoZoomInterval=null;return;}
+    breathFov-=degsPerStep;
+    if(breathFov<breathMin-0.05)breathFov=breathMin-0.05;
+    currentView.setParameters({fov:degToRad(breathFov)});
+  },stepMs);
 }
+function stopAutoMove(){if(autoMoveTimer){clearTimeout(autoMoveTimer);autoMoveTimer=null;}
+  if(autoMoveInterval){clearInterval(autoMoveInterval);autoMoveInterval=null;}
+  if(autoZoomInterval){clearInterval(autoZoomInterval);autoZoomInterval=null;}
+  autoMoveActive=false;autoStepping=false;}
+function autoStepOnce(isUp,startYaw){if(!autoMoveActive||autoStepping)return;
+  if(Math.abs(radToDeg(normalizeAngle(currentView.parameters().yaw-startYaw)))>90){stopAutoMove();return;}
+  autoStepping=true;if(autoZoomInterval){clearInterval(autoZoomInterval);autoZoomInterval=null;}
+  var sceneBefore=currentSceneObj;executeMove(isUp);
+  if(currentSceneObj===sceneBefore){stopAutoMove();return;}
+  autoStepping=false;startContinuousZoom();}
+function setupArrow(btnId,isUp){var btn=document.getElementById(btnId);
+  function onPress(){if(autoMoveActive){stopAutoMove();return;}
+    autoMoveTimer=setTimeout(function(){autoMoveTimer=null;autoMoveActive=true;
+      var startYaw=currentView.parameters().yaw;startContinuousZoom();
+      autoMoveInterval=setInterval(function(){autoStepOnce(isUp,startYaw);},autoMoveInterval_ms);},500);}
+  function onRelease(){if(autoMoveTimer){clearTimeout(autoMoveTimer);autoMoveTimer=null;
+    if(!autoMoveActive)executeMove(isUp);}}
+  btn.addEventListener('mousedown',onPress);
+  btn.addEventListener('touchstart',function(e){e.preventDefault();onPress();});
+  btn.addEventListener('mouseup',onRelease);btn.addEventListener('touchend',onRelease);}
 
-// 画面操作時にUIを表示
-document.addEventListener('mousemove', showUI);
-document.addEventListener('touchstart', showUI);
-
-/* ------------------------------
-   長押し自動移動
------------------------------- */
-var autoMoveInterval = null;
-var autoMoveDelay = 800;
-
-function startAutoMove(moveFunction) {
-  if (autoMoveInterval) return;
-  moveFunction();
-  autoMoveInterval = setInterval(moveFunction, autoMoveDelay);
-}
-
-function stopAutoMove() {
-  if (autoMoveInterval) {
-    clearInterval(autoMoveInterval);
-    autoMoveInterval = null;
+setupArrow('arrowUp', true);
+setupArrow('arrowDown', false);
+document.getElementById('arrowLeft').addEventListener('click', function() {
+  if (autoMoveActive) { stopAutoMove(); return; }
+  executeSideMove('left');
+});
+document.getElementById('arrowRight').addEventListener('click', function() {
+  if (autoMoveActive) { stopAutoMove(); return; }
+  executeSideMove('right');
+});
+document.getElementById('arrowUpGreen').addEventListener('click', function() {
+  if (!currentSceneObj || !window.greenArrowConfig || window.greenArrowConfig.arrows.length === 0) return;
+  
+  var yawDeg = radToDeg(normalizeAngle(currentView.parameters().yaw));
+  
+  // すべての脇道をチェック
+  for (var i = 0; i < window.greenArrowConfig.arrows.length; i++) {
+    var arrow = window.greenArrowConfig.arrows[i];
+    // シーンID一致 & 角度範囲内か確認
+    if (currentSceneObj.data.id === arrow.sceneId) {
+      // startAngle <= endAngle か startAngle > endAngle かで判定方式を切り替え
+      var isInRange = false;
+      if (arrow.startAngle <= arrow.endAngle) {
+        isInRange = yawDeg >= arrow.startAngle && yawDeg <= arrow.endAngle;
+      } else {
+        isInRange = yawDeg >= arrow.endAngle && yawDeg <= arrow.startAngle;
+      }
+      
+      if (isInRange) {
+        // 進入先を取得
+        var targetObj = scenesData[arrow.targetSceneId];
+        var targetInitialYaw = targetObj.data.initialViewParameters.yaw;
+        var departureYaw = currentView.parameters().yaw;  // aa での現在の yaw
+        
+        var newYaw;
+        var yawOff = arrow.yawOffset ? degToRad(arrow.yawOffset) : 0;
+        var pitchOff = arrow.pitchOffset ? degToRad(arrow.pitchOffset) : 0;
+        if (isLeftSide(arrow.targetSceneId)) {
+          newYaw = normalizeAngle(departureYaw + targetInitialYaw + degToRad(90) + yawOff);
+        } else if (isRightSide(arrow.targetSceneId)) {
+          newYaw = normalizeAngle(departureYaw + targetInitialYaw - degToRad(90) + yawOff);
+        } else {
+          newYaw = normalizeAngle(departureYaw + yawOff);
+        }
+        console.log('🟢 GREEN ARROW: Moving to', arrow.targetSceneId, 'newYaw:', radToDeg(newYaw).toFixed(2) + '°');
+        
+        // 戻り用に保存
+        window.returnScene = currentSceneObj.data.id;
+        window.departureYaw = departureYaw;
+        window.departurePitch = currentView.parameters().pitch;  // 戻り時のpitch復元用
+        window.targetSceneId = arrow.targetSceneId;
+        window.entryInitialYaw = targetInitialYaw;
+        window.entryYawOffset = yawOff;  // 戻り時に相殺するため保存
+        
+        console.log('   aa_yaw (deg):', radToDeg(departureYaw).toFixed(2));
+        console.log('   target_initial (deg):', radToDeg(targetInitialYaw).toFixed(2));
+        console.log('   → newYaw (deg):', radToDeg(newYaw).toFixed(2));
+        
+        switchScene(arrow.targetSceneId, newYaw, currentView.parameters().pitch + pitchOff, currentView.parameters().fov);
+        return;
+      }
+    }
   }
-}
+});
 
-var arrowUp = document.getElementById('arrowUp');
-var arrowDown = document.getElementById('arrowDown');
-var arrowLeft = document.getElementById('arrowLeft');
-var arrowRight = document.getElementById('arrowRight');
-
-arrowUp.addEventListener('mousedown', function() { startAutoMove(window.moveForward); });
-arrowUp.addEventListener('mouseup', stopAutoMove);
-arrowUp.addEventListener('mouseleave', stopAutoMove);
-arrowUp.addEventListener('touchstart', function(e) { e.preventDefault(); startAutoMove(window.moveForward); });
-arrowUp.addEventListener('touchend', function(e) { e.preventDefault(); stopAutoMove(); });
-
-arrowDown.addEventListener('mousedown', function() { startAutoMove(window.moveBackward); });
-arrowDown.addEventListener('mouseup', stopAutoMove);
-arrowDown.addEventListener('mouseleave', stopAutoMove);
-arrowDown.addEventListener('touchstart', function(e) { e.preventDefault(); startAutoMove(window.moveBackward); });
-arrowDown.addEventListener('touchend', function(e) { e.preventDefault(); stopAutoMove(); });
-
-arrowLeft.addEventListener('mousedown', function() { startAutoMove(window.moveLeft); });
-arrowLeft.addEventListener('mouseup', stopAutoMove);
-arrowLeft.addEventListener('mouseleave', stopAutoMove);
-arrowLeft.addEventListener('touchstart', function(e) { e.preventDefault(); startAutoMove(window.moveLeft); });
-arrowLeft.addEventListener('touchend', function(e) { e.preventDefault(); stopAutoMove(); });
-
-arrowRight.addEventListener('mousedown', function() { startAutoMove(window.moveRight); });
-arrowRight.addEventListener('mouseup', stopAutoMove);
-arrowRight.addEventListener('mouseleave', stopAutoMove);
-arrowRight.addEventListener('touchstart', function(e) { e.preventDefault(); startAutoMove(window.moveRight); });
-arrowRight.addEventListener('touchend', function(e) { e.preventDefault(); stopAutoMove(); });
-
-/* ------------------------------
-   初期シーン
------------------------------- */
-var initialSceneId = null;
-
-for (var id in scenesData) {
-  if (scenesData[id].data.position === startSceneNum &&
-      scenesData[id].data.direction === 'iki') {
-    initialSceneId = id;
-    break;
+function executeSideMove(dir) {
+  var yaw = radToDeg(normalizeAngle(currentView.parameters().yaw));
+  var delta = (yaw < 0) ? (dir === 'left' ? -1 : 1) : (dir === 'left' ? 1 : -1);
+  if (flipDir) delta = -delta;  // ★ ?flip=1 で方向反転
+  var nextPos = currentSceneObj.data.position + delta;
+  for (var id in scenesData) {
+    if (scenesData[id].data.position === nextPos && scenesData[id].data.direction === currentSceneObj.data.direction) {
+      switchScene(id, currentView.parameters().yaw, currentView.parameters().pitch, currentView.parameters().fov);  // ★yaw/pitch両方保持
+      return;
+    }
   }
 }
 
-if (initialSceneId) switchScene(initialSceneId);
-else switchScene('0-1');
+function normalizeAngle(a) { while (a > Math.PI) a -= 2*Math.PI; while (a < -Math.PI) a += 2*Math.PI; return a; }
+// 左系(+90°): bb, bb2, dd, ff など / 右系(-90°): cc, cc2, ee, gg など
+function isLeftSide(id) { return /bb|dd|ff|hh/i.test(id); }
+function isRightSide(id) { return /cc|ee|gg|ii/i.test(id); }
+function isSideRoute(id) { return isLeftSide(id) || isRightSide(id); }
+function degToRad(d) { return d * Math.PI / 180; }
+function radToDeg(r) { return r * 180 / Math.PI; }
+window.goToMap = function() { location.href = urlParams.get('back') || 'map.html'; };
 
-showUI();
+// ========================================
+// ★ BGM再生管理
+// ========================================
+function shouldPlayBGM() {
+  return audioEnabled && bgmPlaying && (bgmEnabled || bgmForce);
+}
 
-})();
+function playSceneBGM(sceneId, opts) {
+  var force = !!(opts && opts.force);
+  if (!audioEnabled) return;
+  if (!force && !shouldPlayBGM()) {
+    // 地図OFFで強制再生もしていない → 全停止
+    stopAllBGM();
+    return;
+  }
+  
+  var sceneObj = scenesData[sceneId];
+  if (!sceneObj || !sceneObj.data.bgm) {
+    // BGM指定なし：全BGMをフェードアウト
+    stopAllBGM();
+    return;
+  }
+  
+  // data.js: bgm は [{file, loop}] の配列（作品によって string/array 混在もあるため吸収）
+  var bgmItems = [];
+  if (Array.isArray(sceneObj.data.bgm)) {
+    bgmItems = sceneObj.data.bgm.map(function(item) {
+      if (typeof item === 'string') return { file: item };
+      return item || {};
+    });
+  } else if (typeof sceneObj.data.bgm === 'string') {
+    bgmItems = sceneObj.data.bgm.split(' ').map(function(s) { return s.trim(); }).filter(Boolean).map(function(f) { return { file: f }; });
+  }
+
+  var bgmFiles = bgmItems.map(function(item) { return item.file; }).filter(Boolean);
+  
+  if (bgmFiles.length === 0) {
+    stopAllBGM();
+    return;
+  }
+  
+  // 新しいBGMファイル一覧を作成
+  var newBGMSet = {};
+  bgmFiles.forEach(function(file) {
+    newBGMSet[file] = true;
+  });
+  
+  // 古いBGMをフェードアウト（新しいリストにないもの）
+  Object.keys(bgmAudios).forEach(function(key) {
+    if (!newBGMSet[key]) {
+      fadeOutAudio(bgmAudios[key], function() {
+        bgmAudios[key].pause();
+        delete bgmAudios[key];
+      });
+    }
+  });
+  
+  // 新しいBGMを再生（既に再生中でなければ）
+  bgmItems.forEach(function(item) {
+    var file = item.file;
+    if (!file) return;
+    if (!bgmAudios[file] || (bgmAudios[file].paused && !bgmAudios[file].ended)) {
+      playAudio('sounds/' + file, {
+        loop: resolveLoopFlag(file, item)
+      });
+    } else {
+      // すでに鳴っている場合も loop 状態は合わせる
+      bgmAudios[file].loop = resolveLoopFlag(file, item);
+      bgmAudios[file].volume = bgmVolume;
+    }
+  });
+}
+
+function resolveLoopFlag(fileName, item) {
+  // data.js の loop 指定だけを採用（ファイル名からの推測はしない）
+  if (item && typeof item.loop === 'boolean') return item.loop;
+  return false;
+}
+
+function playAudio(filePath, opts) {
+  var audio = new Audio(filePath);
+  audio.loop = !!(opts && opts.loop);
+  audio.volume = 0; // fade in
+  
+  audio.addEventListener('canplay', function() {
+    fadeInAudio(audio, bgmVolume, 500);
+  });
+  
+  audio.addEventListener('error', function() {
+    console.error('❌ BGM読込エラー:', filePath);
+  });
+  
+  audio.play().catch(function(err) {
+    console.error('❌ BGM再生エラー:', err);
+  });
+  
+  bgmAudios[filePath.replace('sounds/', '')] = audio;
+}
+
+function fadeOutAudio(audio, callback) {
+  if (!audio || audio.volume === 0) {
+    if (callback) callback();
+    return;
+  }
+  
+  var startVol = audio.volume;
+  var stepCount = bgmFadeOutDuration / 50;  // 50ms間隔
+  var stepVol = startVol / stepCount;
+  var timer = setInterval(function() {
+    audio.volume = Math.max(0, audio.volume - stepVol);
+    if (audio.volume <= 0) {
+      clearInterval(timer);
+      audio.volume = 0;
+      if (callback) callback();
+    }
+  }, 50);
+}
+
+function fadeInAudio(audio, targetVol, duration) {
+  audio.volume = 0;
+  var stepCount = duration / 50;
+  var stepVol = targetVol / stepCount;
+  var timer = setInterval(function() {
+    if (audio.volume < targetVol) {
+      audio.volume = Math.min(targetVol, audio.volume + stepVol);
+    } else {
+      clearInterval(timer);
+      audio.volume = targetVol;
+    }
+  }, 50);
+}
+
+function stopAllBGM() {
+  Object.keys(bgmAudios).forEach(function(key) {
+    fadeOutAudio(bgmAudios[key], function() {
+      bgmAudios[key].pause();
+      delete bgmAudios[key];
+    });
+  });
+}
+
+function enableBGM() {
+  bgmEnabled = true;
+  localStorage.setItem('bgmEnabled', 'true');
+  console.log('🎵 BGM有効化');
+  if (currentSceneObj) playSceneBGM(currentSceneObj.data.id);
+}
+
+function disableBGM() {
+  bgmEnabled = false;
+  localStorage.setItem('bgmEnabled', 'false');
+  // 強制再生中でなければ停止
+  if (!bgmForce) stopAllBGM();
+  console.log('🔇 BGM無効化');
+}
+
+// デバッグ：初期シーンIDを確認
+console.log('🔵 IIFE外 urlParams:', urlParams.toString());
+console.log('🔵 IIFE外 urlParams.get("id"):', urlParams.get('id'));
+console.log('🔵 About to call switchScene with id:', urlParams.get('id') || '0-aa001');
+
+switchScene(urlParams.get('id') || '0-aa001');
+
+}
 </script>
-<style>
-  /* 1. 電球自体の、微かな黄金の光 */
-  .cave-lamp-spirit {
-    width: 30px; height: 30px;
-    background: radial-gradient(circle, rgba(255,180,50,0.4) 0%, transparent 80%);
-    animation: gentle-breath 7s infinite; /* 7秒かけてゆっくり呼吸 */
-    pointer-events: none;
-    z-index: 100;
-  }
-  /* 2. 岩肌に広がる黄金色の反射（さらに薄く） */
-  .cave-glow-spirit {
-    width: 200px; height: 150px;
-    background: radial-gradient(ellipse, rgba(255,140,0,0.06) 0%, transparent 75%);
-    animation: gentle-breath 7s infinite;
-    animation-delay: 1.2s; /* 電球から1.2秒遅れて、そっと光る */
-    pointer-events: none;
-    z-index: 99;
-  }
-  @keyframes gentle-breath {
-    0%, 100% { opacity: 0.03; transform: scale(0.98); }
-    50% { opacity: 0.15; transform: scale(1.03); }
-  }
-</style>
-
 </body>
 </html>
