@@ -1,191 +1,75 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-<title>Project Title</title>
+<title>VRツアーマップ</title>
 <meta charset="utf-8">
-<meta name="viewport" content="target-densitydpi=device-dpi, width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, minimal-ui" />
-<style> @-ms-viewport { width: device-width; } </style>
-<link rel="stylesheet" href="vendor/reset.min.css">
-<link rel="stylesheet" href="style.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body, html { width: 100%; height: 100%; overflow: hidden; background: #222; }
+.map-container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; background: #222; }
+.map-image { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.overlay-text { position: absolute; z-index: 5; pointer-events: none; }
+.main-title { font-size: 48px; color: #ffff00; font-weight: bold; font-family: 'Yu Mincho','YuMincho','Hiragino Mincho ProN','MS PMincho',serif; text-shadow: 0 0 10px rgba(0,0,0,0.95), 0 0 20px rgba(0,0,0,0.76), 0 0 30px rgba(0,0,0,0.57), 0 0 40px rgba(0,0,0,0.38); margin-bottom: 10px; text-align: left; }
+.desc-text { font-size: 23px; color: #ff8040; font-family: 'Hiragino Kaku Gothic Pro','Meiryo',sans-serif; text-shadow: 0 0 10px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.7200000000000001), 0 0 30px rgba(0,0,0,0.54), 0 0 40px rgba(0,0,0,0.36000000000000004); white-space: pre-wrap; line-height: 1.6; text-align: left; }
+.map-pin { position: absolute; transform: translate(-50%, -100%); cursor: pointer; z-index: 10; display: flex; flex-direction: column; align-items: center; transition: transform 0.2s; }
+.map-pin:hover, .map-pin:active { transform: translate(-50%, -100%) scale(1.15); }
+.pin-icon { width: 36px; height: 36px; border: 3px solid white; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 3px 8px rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; }
+.pin-number { transform: rotate(45deg); font-size: 14px; font-weight: bold; color: white; line-height: 1; }
+.pin-label { background: rgba(255,255,255,0.95); color: #333; font-size: 12px; font-weight: bold; padding: 3px 8px; border-radius: 4px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.4); margin-bottom: 4px; pointer-events: none; font-family: sans-serif; }
+</style>
 </head>
-<body class="multiple-scenes ">
-
-<div id="pano"></div>
-
-<div id="sceneList">
-  <ul class="scenes">
-    
-      <a href="javascript:void(0)" class="scene" data-id="0-aa001">
-        <li class="text">aa001</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="1-aa002">
-        <li class="text">aa002</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="2-aa003">
-        <li class="text">aa003</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="3-aa004">
-        <li class="text">aa004</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="4-aa005">
-        <li class="text">aa005</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="5-aa006">
-        <li class="text">aa006</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="6-aa007">
-        <li class="text">aa007</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="7-aa008">
-        <li class="text">aa008</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="8-aa009">
-        <li class="text">aa009</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="9-aa010">
-        <li class="text">aa010</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="10-cc001">
-        <li class="text">cc001</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="11-cc002">
-        <li class="text">cc002</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="12-cc003">
-        <li class="text">cc003</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="13-cc004">
-        <li class="text">cc004</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="14-cc005">
-        <li class="text">cc005</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="15-cc006">
-        <li class="text">cc006</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="16-cc007">
-        <li class="text">cc007</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="17-cc008">
-        <li class="text">cc008</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="18-cc009">
-        <li class="text">cc009</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="19-cc010">
-        <li class="text">cc010</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="20-cc011">
-        <li class="text">cc011</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="21-cc012">
-        <li class="text">cc012</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="22-cc013">
-        <li class="text">cc013</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="23-cc014">
-        <li class="text">cc014</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="24-cc015">
-        <li class="text">cc015</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="25-cc016">
-        <li class="text">cc016</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="26-cc017">
-        <li class="text">cc017</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="27-cc018">
-        <li class="text">cc018</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="28-cc019">
-        <li class="text">cc019</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="29-cc020">
-        <li class="text">cc020</li>
-      </a>
-    
-      <a href="javascript:void(0)" class="scene" data-id="30-cc021">
-        <li class="text">cc021</li>
-      </a>
-    
-  </ul>
+<body>
+<div class="map-container">
+  <img src="map.jpg" alt="地図" class="map-image">
+  <div class="overlay-text" style="left: 2%; top: 3%;">
+    <div class="main-title">西展望台への登り口</div>
+    <div class="desc-text">まるで登山道入り口のような階段があります。</div>
+  </div>
 </div>
+<script>
+var MAP_BOUNDS = {
+  topLeft: { lat: 33.209755, lng: 131.651764 },
+  bottomRight: { lat: 33.209115, lng: 131.65329 }
+};
+var PINS = [
 
-<div id="titleBar">
-  <h1 class="sceneName"></h1>
-</div>
+  // Pin #1: 散歩道 (aa - sceneId: 0-aa001)
+  { lat: 33.209433, lng: 131.652364, name: '散歩道', sceneId: '0-aa001', color: '#80ff00', greenArrows: [{ sceneId: '6-aa007', startAngle: 90, endAngle: 140, targetSceneId: '10-cc001', yawOffset: -36 }] },
 
-<a href="javascript:void(0)" id="autorotateToggle">
-  <img class="icon off" src="img/play.png">
-  <img class="icon on" src="img/pause.png">
-</a>
+  // Pin #2: 西展望台へ (bb - sceneId: 10-cc001)
+  { lat: 33.209572, lng: 131.652686, name: '西展望台へ', sceneId: '10-cc001', color: '#ffff00' }
+];
 
-<a href="javascript:void(0)" id="fullscreenToggle">
-  <img class="icon off" src="img/fullscreen.png">
-  <img class="icon on" src="img/windowed.png">
-</a>
+function goToScene(pin) {
+  var url = './viewer.html?id=' + pin.sceneId;
+  if (pin.flip) url += '&flip=1';
+  if (pin.greenArrows && pin.greenArrows.length > 0) {
+    var encoded = encodeURIComponent(JSON.stringify(pin.greenArrows));
+    url += '&greenArrows=' + encoded;
+  }
+  url += '&back=./map.html';
+  window.location.href = url;
+}
 
-<a href="javascript:void(0)" id="sceneListToggle">
-  <img class="icon off" src="img/expand.png">
-  <img class="icon on" src="img/collapse.png">
-</a>
+function gpsToPercent(lat, lng) {
+  var x = (lng - MAP_BOUNDS.topLeft.lng) / (MAP_BOUNDS.bottomRight.lng - MAP_BOUNDS.topLeft.lng) * 100;
+  var y = (MAP_BOUNDS.topLeft.lat - lat) / (MAP_BOUNDS.topLeft.lat - MAP_BOUNDS.bottomRight.lat) * 100;
+  return { x: x, y: y };
+}
 
-<a href="javascript:void(0)" id="viewUp" class="viewControlButton viewControlButton-1">
-  <img class="icon" src="img/up.png">
-</a>
-<a href="javascript:void(0)" id="viewDown" class="viewControlButton viewControlButton-2">
-  <img class="icon" src="img/down.png">
-</a>
-<a href="javascript:void(0)" id="viewLeft" class="viewControlButton viewControlButton-3">
-  <img class="icon" src="img/left.png">
-</a>
-<a href="javascript:void(0)" id="viewRight" class="viewControlButton viewControlButton-4">
-  <img class="icon" src="img/right.png">
-</a>
-<a href="javascript:void(0)" id="viewIn" class="viewControlButton viewControlButton-5">
-  <img class="icon" src="img/plus.png">
-</a>
-<a href="javascript:void(0)" id="viewOut" class="viewControlButton viewControlButton-6">
-  <img class="icon" src="img/minus.png">
-</a>
-
-<script src="vendor/screenfull.min.js" ></script>
-<script src="vendor/bowser.min.js" ></script>
-<script src="vendor/marzipano.js" ></script>
-
-<script src="data.js"></script>
-<script src="index.js"></script>
-
+var container = document.querySelector('.map-container');
+PINS.forEach(function(pin, i) {
+  var pos = gpsToPercent(pin.lat, pin.lng);
+  var el = document.createElement('div');
+  el.className = 'map-pin';
+  el.style.left = pos.x + '%';
+  el.style.top = pos.y + '%';
+  el.setAttribute('data-idx', i);
+  el.innerHTML = '<div class="pin-label">' + pin.name + '</div><div class="pin-icon" style="background:' + pin.color + ';"><span class="pin-number">' + (i+1) + '</span></div>';
+  el.addEventListener('click', function() { goToScene(PINS[parseInt(this.getAttribute('data-idx'))]); });
+  container.appendChild(el);
+});
+</script>
 </body>
 </html>
