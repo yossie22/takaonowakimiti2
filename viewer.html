@@ -132,6 +132,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
   );
 }
 </style>
+<script src="data.js"></script>
 </head>
 
 <body>
@@ -171,6 +172,26 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
 
 <script src="vendor/marzipano.js"></script>
 <script>
+// ★ポータル設定（portal_app.htmlからの命令に基づいて設定）
+// 複数のポータルに対応（シーンIDを変更するだけで対応可能）
+// ★注意：このテンプレートは空の状態です。portal_app.htmlで設定を生成してください。
+var PORTAL_SETTINGS = [
+  {
+    "sceneId": "1-aa002",
+    "targetScene": "11-cc002",
+    "yawMin": 70,
+    "yawMax": 110,
+    "src": "por.png",
+    "fadeTime": 5,
+    "dispTime": 1000,
+    "width": 1012,
+    "height": 760,
+    "yaw": 1.5708,
+    "pitch": 0,
+    "radius": 800
+  }
+];
+
 // ========================================
 // ★ 修正案A：URLパラメータ読み込みをIIFE外に移動
 // スコープ隔離による greenArrowConfig 消失を解決
@@ -521,41 +542,44 @@ function switchScene(sceneId, yaw, pitch, fov) {
   
   showUI();
   
-  // ★imageHotspots処理（bb001の和傘画像）
-  if (sceneId === "0-aa001") {
-    window.umbrellaHotspotCreated = false;  // bb001到達時にフラグをリセット
-  }
-  
-  if (obj.data.imageHotspots) {
-    obj.data.imageHotspots.forEach(function(ih) {
-      var img = document.createElement('img');
-      img.src = ih.src;
-      img.className = 'image-hotspot';
-      img.style.cssText = [
-        'width:' + (ih.width || 400) + 'px',
-        'height:' + (ih.height || 300) + 'px',
-        'object-fit:cover',
-        'opacity:0',
-        'transition:opacity 5s ease-in-out',
-        'cursor:pointer',
-        'pointer-events:none'
-      ].join(';');
-      
-      // ★和傘クリックでcc001に移動
-      img.addEventListener('click', function(e) {
-        e.stopPropagation();
-        if (currentSceneObj.data.id === "0-aa001" && window.umbrellaHotspotCreated) {
-          console.log('🎎 和傘クリック → cc001 に移動');
-          switchScene('10-cc001');
-        }
-      });
-      
-      currentScene.hotspotContainer().createHotspot(img,
-        { yaw: ih.yaw || 0, pitch: ih.pitch || 0 },
-        { perspective: { radius: ih.radius || 800 } }
-      );
+  // ★ポータル処理（PORTAL_SETTINGSから設定を読む・汎用化）
+  var portalSetting = PORTAL_SETTINGS.find(function(p) { return p.sceneId === sceneId; });
+  if (portalSetting) {
+    // ポータル到達時にフラグをリセット
+    window.portalHotspotCreated = false;
+    console.log('🎎 ポータル初期化: sceneId=' + sceneId + ', targetScene=' + portalSetting.targetScene);
+    
+    // ポータル画像を作成
+    var img = document.createElement('img');
+    img.src = portalSetting.src;
+    img.className = 'image-hotspot';
+    img.style.cssText = [
+      'width:' + portalSetting.width + 'px',
+      'height:' + portalSetting.height + 'px',
+      'object-fit:cover',
+      'opacity:0',
+      'transition:opacity ' + portalSetting.fadeTime + 's ease-in-out',
+      'cursor:pointer',
+      'pointer-events:none'
+    ].join(';');
+    
+    // ★ポータルクリック時の遷移
+    img.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (window.portalHotspotCreated) {
+        console.log('🎎 ポータルクリック → ' + portalSetting.targetScene + ' に移動');
+        switchScene(portalSetting.targetScene);
+      }
     });
+    
+    // ホットスポット作成
+    currentScene.hotspotContainer().createHotspot(img,
+      { yaw: portalSetting.yaw, pitch: portalSetting.pitch },
+      { perspective: { radius: portalSetting.radius } }
+    );
+    console.log('🎎 ホットスポット作成: ' + portalSetting.src + ' → ' + portalSetting.targetScene);
   }
+
 }
 
 function updateUI() {
@@ -581,29 +605,38 @@ function updateUI() {
   document.getElementById('arrowLeft').style.visibility = isVert ? 'hidden' : 'visible';
   document.getElementById('arrowRight').style.visibility = isVert ? 'hidden' : 'visible';
 
-  
-  // ★bb001での和傘表示（1回限り、70～110度に到達したら）
-  if (currentSceneObj.data.id === "0-aa001" && !window.umbrellaHotspotCreated) {
-    if (yawDeg >= 70 && yawDeg <= 110) {
-      window.umbrellaHotspotCreated = true;
-      var umbrellaImg = document.querySelector('.image-hotspot');
-      if (umbrellaImg) {
-        // フェードイン：5秒
-        umbrellaImg.style.opacity = '1';
-        umbrellaImg.style.pointerEvents = 'auto';  // ★クリック有効化
-        console.log('🎎 和傘フェードイン開始（70～110度に到達）');
+  // ★ポータル画像表示（PORTAL_SETTINGSから角度・タイミング情報を読む）
+  var portalSetting = PORTAL_SETTINGS.find(function(p) { return p.sceneId === currentSceneObj.data.id; });
+  if (portalSetting && !window.portalHotspotCreated) {
+    var yawMin = portalSetting.yawMin;
+    var yawMax = portalSetting.yawMax;
+    var fadeTime = portalSetting.fadeTime;
+    var dispTime = portalSetting.dispTime;
+    var totalTime = (fadeTime * 1000) + dispTime;  // フェード + 表示時間
+    
+    console.log('🎎 ポータル条件チェック: yawDeg=' + yawDeg.toFixed(1) + '°, 範囲=' + yawMin + '～' + yawMax + '°');
+    
+    if (yawDeg >= yawMin && yawDeg <= yawMax) {
+      window.portalHotspotCreated = true;
+      var portalImg = document.querySelector('.image-hotspot');
+      if (portalImg) {
+        // フェードイン開始
+        portalImg.style.opacity = '1';
+        portalImg.style.pointerEvents = 'auto';  // ★クリック有効化
+        console.log('🎎 ポータルフェードイン開始（' + yawMin + '～' + yawMax + '度に到達）');
         
-        // 6秒後にフェードアウト開始（5秒フェードイン + 1秒表示）
+        // totalTime 後にフェードアウト開始
         setTimeout(function() {
-          if (umbrellaImg) {
-            umbrellaImg.style.opacity = '0';
-            umbrellaImg.style.pointerEvents = 'none';  // ★クリック無効化
-            console.log('🎎 和傘フェードアウト開始');
+          if (portalImg) {
+            portalImg.style.opacity = '0';
+            portalImg.style.pointerEvents = 'none';  // ★クリック無効化
+            console.log('🎎 ポータルフェードアウト開始');
           }
-        }, 6000);
+        }, totalTime);
       }
     }
   }
+
   // 緑矢印の表示制御（複数脇道対応）
   document.getElementById('arrowUpGreen').style.visibility = (function() {
     if (!currentSceneObj) {
@@ -797,8 +830,9 @@ var breathMax=75,breathMin=75,breathFov=breathMax,autoFadePct=0.175;
 var autoMoveTimer=null,autoMoveInterval=null,autoZoomInterval=null;
 var autoMoveActive=false,autoStepping=false;
 
-// キー：URL+タイトル → aaとcc、異なるファイルで完全に区別される
-function _ck(){return 'ap_'+(location.href+document.title).replace(/[^a-zA-Z0-9]/g,'_')+'_';}
+// キー：document.title（タイトル）のみを使用 → すべてのフォルダで同じキー
+// ★修正：location.hrefを削除（ローカル/USB間での設定同期を実現）
+function _ck(){return 'ap_'+(document.title).replace(/[^a-zA-Z0-9]/g,'_')+'_';}
 function _save(k,v){try{localStorage.setItem(_ck()+k,String(v));}catch(e){}}
 function _load(k,def){try{var v=localStorage.getItem(_ck()+k);return v!==null?v:def;}catch(e){return def;}}
 
