@@ -564,13 +564,16 @@ function switchScene(sceneId, yaw, pitch, fov) {
     ].join(';');
     
     // ★ポータルクリック時の遷移
-    img.addEventListener('click', function(e) {
-      e.stopPropagation();
-      if (window.portalHotspotCreated) {
-        console.log('🎎 ポータルクリック → ' + portalSetting.targetScene + ' に移動');
-        switchScene(portalSetting.targetScene);
-      }
-    });
+   function handlePortalTap(e) {
+  e.stopPropagation();
+  if (window.portalHotspotCreated) {
+    console.log('🎎 ポータルクリック → ' + portalSetting.targetScene + ' に移動');
+    switchScene(portalSetting.targetScene);
+  }
+}
+
+img.addEventListener('click', handlePortalTap);
+img.addEventListener('touchend', handlePortalTap);
     
     // ホットスポット作成
     currentScene.hotspotContainer().createHotspot(img,
