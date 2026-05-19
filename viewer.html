@@ -147,10 +147,11 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
 }
 .portal-hit-area {
   position: absolute;
-  left: 25%;
-  top: 25%;
-  width: 50%;
-  height: 50%;
+  left: 39%;
+  top: 39%;
+  width: 22%;
+  height: 22%;
+  border-radius: 50%;
   z-index: 2;
   cursor: pointer;
   pointer-events: none;
@@ -158,17 +159,17 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
   -webkit-tap-highlight-color: transparent;
 }
 .portal-hotspot.portal-tappable {
-  pointer-events: auto;
+  pointer-events: none;
 }
 .portal-hotspot.portal-tappable .portal-hit-area {
   pointer-events: auto;
 }
 @media (pointer: coarse) {
   .portal-hit-area {
-    left: 12%;
-    top: 12%;
-    width: 76%;
-    height: 76%;
+    left: 37%;
+    top: 37%;
+    width: 26%;
+    height: 26%;
   }
 }
 .portal-inner {
@@ -639,7 +640,7 @@ function setPortalTappable(hs, enabled) {
   hs.portalActive = !!enabled;
   if (enabled) hs.img.classList.add('portal-tappable');
   else hs.img.classList.remove('portal-tappable');
-  hs.img.style.pointerEvents = enabled ? 'auto' : 'none';
+  hs.img.style.pointerEvents = 'none';
   if (hs.hitArea) hs.hitArea.style.pointerEvents = enabled ? 'auto' : 'none';
 }
 
@@ -846,7 +847,6 @@ function switchScene(sceneId, yaw, pitch, fov, fromPortalHotspot) {
         portalActive: false
       };
       bindPortalTap(hitArea, function() { onPortalHotspotTap(hsRef); });
-      bindPortalTap(wrapper, function() { onPortalHotspotTap(hsRef); });
       
       var placeYaw = portalPlacementYawRad(ih);
       var placePitch = 0;
