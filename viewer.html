@@ -88,13 +88,21 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
 #sceneText {
   position: fixed;
   z-index: 200;
-  display: inline-block;
+  display: block;
+  box-sizing: border-box;
+  /* スマホ実機：data.js の px × 1.6（2月仕様）。PCプレビューは text_generator で px そのまま */
+  width: 88vw;
+  max-width: min(88vw, 42em);
   padding: 4px 10px;
   background: none;
   pointer-events: none;
-  text-align: center;
+  text-align: left;
   transform: translateX(-50%);
-  white-space: nowrap;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: normal;
+  line-height: 1.4;
   /* 多重シャドウで背景に溶け込む */
   text-shadow:
     0   0   2px  rgba(0,0,0,1),
@@ -200,6 +208,89 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
   transform-origin: 50% 50%;
 }
 
+/* 2D動画ホットスポット（テスト用・パノラマ上に貼る平面動画） */
+.scene-video-2d-wrap {
+  overflow: hidden;
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 0.95;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.45);
+  border-radius: 4px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.scene-video-2d-wrap video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+
+.portal-linked-video {
+  position: absolute;
+  left: 1.5%;
+  top: 1.5%;
+  width: 97%;
+  height: 97%;
+  object-fit: cover;
+  display: block;
+  background: #000;
+  opacity: 0;
+  transition: opacity 0.6s ease-in-out;
+  z-index: 3;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(ellipse 88% 82% at 50% 50%, #000 42%, transparent 100%);
+  mask-image: radial-gradient(ellipse 88% 82% at 50% 50%, #000 42%, transparent 100%);
+}
+.portal-linked-video.is-playing {
+  opacity: 1;
+}
+
+/* 2D動画・全画面（既定。imageHotspots の videoSrc など） */
+.video-fs-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  background: rgba(0, 0, 0, 0.92);
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 1.15s ease-in-out;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+.video-fs-overlay.is-active {
+  display: flex;
+}
+.video-fs-overlay.is-visible {
+  opacity: 1;
+}
+.video-fs-player {
+  width: 100vw;
+  height: 100vh;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: cover;
+  background: #000;
+  opacity: 0;
+  transition: opacity 1.05s ease-in-out;
+  -webkit-mask-image: radial-gradient(ellipse 96% 94% at 50% 50%, #000 58%, rgba(0,0,0,0.85) 78%, transparent 100%);
+  mask-image: radial-gradient(ellipse 96% 94% at 50% 50%, #000 58%, rgba(0,0,0,0.85) 78%, transparent 100%);
+}
+.video-fs-overlay.is-visible .video-fs-player {
+  opacity: 1;
+}
+.video-fs-overlay.is-fading-out {
+  opacity: 0;
+  pointer-events: none;
+}
+.video-fs-overlay.is-fading-out .video-fs-player {
+  opacity: 0;
+  transition: opacity 0.95s ease-in-out;
+}
+
 </style>
 <script src="data.js"></script>
 </head>
@@ -209,6 +300,9 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
 <div id="sceneText"></div>
 <div id="fadeOverlay"></div>
 <div id="blurOverlay"></div>
+<div id="videoFullscreenOverlay" class="video-fs-overlay" aria-hidden="true">
+  <video id="videoFullscreenPlayer" class="video-fs-player" playsinline webkit-playsinline></video>
+</div>
 <div id="crosshair"></div>
 
 <div id="compassContainer">
@@ -290,7 +384,7 @@ window.greenArrowConfig = {
 // ★ infoHotspot テキスト管理
 window.shownTextScenes = {};   // 表示済みシーンID記録
 window.sceneTextTimer  = null; // フェードアウトタイマー
-var sceneTextScale = 1.6;       // text_generator のプレビューに近づけるための表示倍率
+var sceneTextScale = 1.6;  // スマホ実機用（PCの text_generator プレビューに近い見え方）
 
 // ★3種類の法則を実装するためのグローバル変数
 window.returnScene = null;                    // 戻り先シーン
@@ -302,9 +396,60 @@ var bgmAudios = {};              // { fileName: HTMLAudioElement }
 var bgmVolume = parseFloat(localStorage.getItem('bgmVolume') || '0.5'); // 0..1
 // ★地図側のON/OFF（デフォルト：true）
 var bgmEnabled = (localStorage.getItem('bgmEnabled') !== 'false');  // 'false' 以外は true
+// ★URL ?bgm=0 / ?bgm=1（地図の「BGMオフで入る」など。この閲覧のみ上書き）
+(function () {
+  var p = urlParams.get('bgm');
+  if (p === '0') bgmEnabled = false;
+  if (p === '1') bgmEnabled = true;
+})();
 // ★長押しで「地図OFFでも鳴らす」強制再生フラグ
 var bgmForce = false;
-var bgmFadeOutDuration = 1000;   // フェードアウト時間（ms）
+var bgmFadeOutDuration = 1600;   // コース切替などのフェードアウト（ms）
+var courseBgmSessionPlayed = {}; // 地図に戻るまでコースBGMを1回だけ（同一コース内の移動では再開しない）
+var activeBgmCourse = null;      // いま鳴っているBGMのコース（bb→aa などコース変更で停止）
+var bgmSuppressedForVideo = 0;   // 動画再生中はBGMをフェードアウト
+
+/** 緑矢印の遷移先ID補正（17dd001 → 17-dd001）。グローバル定義（URL読込より前） */
+function resolveSceneId(rawId) {
+  if (!rawId) return null;
+  var s = String(rawId).trim();
+  if (typeof scenesData !== 'undefined' && scenesData && scenesData[s]) return s;
+  if (window.APP_DATA && window.APP_DATA.scenes) {
+    var compact = s.replace(/-/g, '');
+    for (var i = 0; i < window.APP_DATA.scenes.length; i++) {
+      var sid = window.APP_DATA.scenes[i].id;
+      if (sid === s) return sid;
+      if (sid.replace(/-/g, '') === compact) return sid;
+    }
+    var m = s.match(/^(\d+)([a-z]{2})(\d{3})$/i);
+    if (m) {
+      var fixed = m[1] + '-' + m[2].toLowerCase() + m[3];
+      for (var j = 0; j < window.APP_DATA.scenes.length; j++) {
+        if (window.APP_DATA.scenes[j].id === fixed) return fixed;
+      }
+    }
+  }
+  return null;
+}
+
+function normalizeGreenArrowConfig() {
+  if (!window.greenArrowConfig || !window.greenArrowConfig.arrows.length) return;
+  window.greenArrowConfig.arrows = window.greenArrowConfig.arrows.map(function(a) {
+    var tid = resolveSceneId(a.targetSceneId) || a.targetSceneId;
+    if (tid !== a.targetSceneId) {
+      console.warn('⚠️ 緑矢印の遷移先IDを補正:', a.targetSceneId, '→', tid);
+    }
+    var out = {
+      sceneId: a.sceneId,
+      startAngle: a.startAngle,
+      endAngle: a.endAngle,
+      targetSceneId: tid
+    };
+    if (a.yawOffset != null && a.yawOffset !== '') out.yawOffset = a.yawOffset;
+    if (a.pitchOffset != null && a.pitchOffset !== '') out.pitchOffset = a.pitchOffset;
+    return out;
+  });
+}
 
 // URLパラメータから緑矢印データを読み込み（IIFE外で実行）
 var greenArrowsParam = urlParams.get('greenArrows');
@@ -312,22 +457,20 @@ console.log('🔍 greenArrowsParam from URL:', greenArrowsParam);
 
 if (greenArrowsParam) {
   try {
-    console.log('🔍 Attempting to parse:', greenArrowsParam);
     var decoded = decodeURIComponent(greenArrowsParam);
-    console.log('🔍 After decodeURIComponent:', decoded);
     var arrowsArray = JSON.parse(decoded);
-    console.log('🔍 After JSON.parse:', arrowsArray);
     if (Array.isArray(arrowsArray)) {
       window.greenArrowConfig.arrows = arrowsArray;
-      console.log('✅ greenArrows loaded successfully:', window.greenArrowConfig.arrows);
+      console.log('✅ greenArrows loaded:', window.greenArrowConfig.arrows.length, '件');
     } else {
       console.warn('⚠️ arrowsArray is not an array');
     }
   } catch(e) {
     console.error('❌ Failed to parse greenArrows:', e.message, e);
+    window.greenArrowConfig.arrows = [];
   }
 } else {
-  console.warn('⚠️ greenArrowsParam is null or undefined from URL');
+  console.warn('⚠️ greenArrowsParam is null（地図の入り口ピンから入ると付与されます）');
 }
 
 function startViewer() {
@@ -411,11 +554,21 @@ var volumeUI = document.getElementById('volumeContainer');
 var audioEnabled = false;
 // ★長押しの再生/停止トグル（地図OFFとは別軸）
 var bgmPlaying = true;
+var audioUnlockConsumed = false;
 
-document.addEventListener('click', function enableAudioOnClick() {
+function enableAudioOnFirstGesture() {
+  if (audioUnlockConsumed) return;
+  audioUnlockConsumed = true;
   audioEnabled = true;
-  document.removeEventListener('click', enableAudioOnClick);
-}, { once: true });
+  if (currentSceneObj) playSceneBGM(currentSceneObj.data.id, { force: true });
+}
+document.addEventListener('click', enableAudioOnFirstGesture, { once: true });
+document.addEventListener('touchstart', enableAudioOnFirstGesture, { once: true, passive: true });
+document.addEventListener('pointerdown', enableAudioOnFirstGesture, { once: true, capture: true });
+if (panoElement) {
+  panoElement.addEventListener('touchstart', enableAudioOnFirstGesture, { once: true, capture: true, passive: true });
+  panoElement.addEventListener('pointerdown', enableAudioOnFirstGesture, { once: true, capture: true });
+}
 
 function toggleBGMPlayback() {
   // 長押しは「地図でOFFでも強制的に鳴らす」ことがある
@@ -448,6 +601,7 @@ data.scenes.forEach(function(sd) {
   var dir = sd.direction;
   scenesData[sd.id] = { scene: scene, view: view, data: Object.assign({}, sd, { direction: dir }) };
 });
+normalizeGreenArrowConfig();
 
 function showUI() {
   var standardUI = [mapBtnEl, counterEl];
@@ -672,9 +826,255 @@ function bindPortalTap(el, onTap) {
 function onPortalHotspotTap(hs) {
   if (!hs || !hs.portalActive || !hs.ih) return;
   var ih = hs.ih;
+  if (ih.videoSrc && ih.playVideoOnTap !== false) {
+    setPortalTappable(hs, false);
+    playLinkedPortalVideo(hs);
+    return;
+  }
+  if (!ih.targetScene) return;
   console.log('🎎 hotspot タップ → ' + ih.targetScene + ' に移動');
   setPortalTappable(hs, false);
   switchScene(ih.targetScene, ih.targetYaw, ih.targetPitch, currentView.parameters().fov, true);
+}
+
+var fullscreenVideoOnEnd = null;
+var fullscreenFadeOutTimer = null;
+var VIDEO_FS_FADE_IN_MS = 1150;
+var VIDEO_FS_FADE_OUT_MS = 1000;
+
+function showFullscreenVideo(src, opts) {
+  opts = opts || {};
+  fadeOutBgmForVideo();
+  var overlay = document.getElementById('videoFullscreenOverlay');
+  var vid = document.getElementById('videoFullscreenPlayer');
+  if (!overlay || !vid) return;
+  if (fullscreenFadeOutTimer) {
+    clearTimeout(fullscreenFadeOutTimer);
+    fullscreenFadeOutTimer = null;
+  }
+  fullscreenVideoOnEnd = opts.onEnd || null;
+  vid.loop = !!opts.loop;
+  vid.src = src;
+  vid.muted = false;
+  vid.onended = function() {
+    if (vid.loop) return;
+    hideFullscreenVideo(true, false);
+  };
+  overlay.classList.remove('is-fading-out', 'is-visible');
+  overlay.classList.add('is-active');
+  overlay.setAttribute('aria-hidden', 'false');
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      overlay.classList.add('is-visible');
+    });
+  });
+  setTimeout(function() {
+    vid.play().catch(function() {
+      vid.muted = true;
+      vid.play();
+    });
+  }, Math.round(VIDEO_FS_FADE_IN_MS * 0.45));
+}
+
+function hideFullscreenVideo(callOnEnd, instant) {
+  var overlay = document.getElementById('videoFullscreenOverlay');
+  var vid = document.getElementById('videoFullscreenPlayer');
+  if (!overlay || !vid) return;
+
+  function finishHide() {
+    overlay.classList.remove('is-active', 'is-visible', 'is-fading-out');
+    overlay.setAttribute('aria-hidden', 'true');
+    try {
+      vid.pause();
+      vid.currentTime = 0;
+    } catch (e) {}
+    restoreBgmAfterVideo();
+    if (callOnEnd && fullscreenVideoOnEnd) {
+      var cb = fullscreenVideoOnEnd;
+      fullscreenVideoOnEnd = null;
+      cb();
+    }
+  }
+
+  if (!overlay.classList.contains('is-active')) {
+    finishHide();
+    return;
+  }
+  if (overlay.classList.contains('is-fading-out')) return;
+
+  if (instant) {
+    if (fullscreenFadeOutTimer) {
+      clearTimeout(fullscreenFadeOutTimer);
+      fullscreenFadeOutTimer = null;
+    }
+    finishHide();
+    return;
+  }
+
+  overlay.classList.remove('is-visible');
+  overlay.classList.add('is-fading-out');
+  fullscreenFadeOutTimer = setTimeout(function() {
+    fullscreenFadeOutTimer = null;
+    finishHide();
+  }, VIDEO_FS_FADE_OUT_MS);
+}
+
+function playLinkedPortalVideo(hs) {
+  var ih = hs.ih;
+  if (!hs.inner || hs.videoPlaying) return;
+  hs.videoPlaying = true;
+  if (hs.autoFadeTimer) {
+    clearTimeout(hs.autoFadeTimer);
+    hs.autoFadeTimer = null;
+  }
+  console.log('🎬 ポータル動画再生: ' + ih.videoSrc);
+  fadeOutBgmForVideo();
+
+  if (hs.portalImg) {
+    hs.portalImg.style.transition = 'opacity 0.85s ease-in-out';
+    hs.portalImg.style.opacity = '0';
+  }
+  if (hs.cover) {
+    hs.cover.style.transition = 'opacity 0.75s ease-in-out';
+    hs.cover.style.opacity = '0';
+  }
+
+  function finishPortalVideo() {
+    if (!hs.videoPlaying) return;
+    hs.videoPlaying = false;
+    window[hs.flagKey] = true;
+    hideFullscreenVideo(false, true);
+    if (hs.linkedVideo) {
+      hs.linkedVideo.classList.remove('is-playing');
+      try {
+        hs.linkedVideo.pause();
+        hs.linkedVideo.currentTime = 0;
+      } catch (e) {}
+    }
+    hidePortalMotion(hs.inner, hs.cover, ih);
+    if (hs.portalImg) hs.portalImg.style.opacity = '0';
+    hs.img.style.transition = 'opacity 1.1s ease-in-out';
+    hs.img.style.opacity = '0';
+    setPortalTappable(hs, false);
+
+    if (ih.targetSceneAfterVideo) {
+      setTimeout(function() {
+        switchScene(
+          ih.targetSceneAfterVideo,
+          ih.targetYawAfterVideo,
+          ih.targetPitchAfterVideo,
+          currentView.parameters().fov,
+          true
+        );
+      }, 500);
+    }
+  }
+
+  var useFullscreen = ih.videoFullscreen !== false;
+  if (useFullscreen) {
+    setTimeout(function() {
+      showFullscreenVideo(ih.videoSrc, {
+        loop: ih.videoLoop === true,
+        onEnd: finishPortalVideo
+      });
+    }, 520);
+    return;
+  }
+
+  var vid = hs.linkedVideo;
+  if (!vid) {
+    vid = document.createElement('video');
+    vid.className = 'portal-linked-video';
+    vid.src = ih.videoSrc;
+    vid.playsInline = true;
+    vid.muted = false;
+    vid.loop = ih.videoLoop === true;
+    vid.preload = 'auto';
+    hs.inner.appendChild(vid);
+    hs.linkedVideo = vid;
+  }
+  setTimeout(function() {
+    if (!hs.linkedVideo) return;
+    hs.linkedVideo.classList.add('is-playing');
+    hs.linkedVideo.play().catch(function() {
+      hs.linkedVideo.muted = true;
+      hs.linkedVideo.play();
+    });
+  }, 400);
+  vid.onended = function() {
+    if (ih.videoLoop === true) return;
+    finishPortalVideo();
+  };
+}
+
+function pauseAllSceneVideos() {
+  hideFullscreenVideo(false, true);
+  if (!window.sceneVideoEls) return;
+  window.sceneVideoEls.forEach(function(item) {
+    try {
+      item.vid.pause();
+      item.vid.currentTime = 0;
+    } catch (e) {}
+  });
+  window.sceneVideoEls = [];
+}
+
+function bindVideo2DTap(wrap, vid, vh) {
+  bindPortalTap(wrap, function() {
+    if (vh && vh.fullscreen !== false) {
+      showFullscreenVideo(vid.src, { loop: vh.loop !== false });
+      return;
+    }
+    if (vid.paused) {
+      vid.muted = false;
+      vid.play().catch(function() {
+        vid.muted = true;
+        vid.play();
+      });
+    } else {
+      vid.pause();
+    }
+  });
+}
+
+function attachVideoHotspots(sceneId, sceneData) {
+  var list = sceneData.videoHotspots;
+  if (!list || !list.length || !currentScene) return;
+  window.sceneVideoEls = window.sceneVideoEls || [];
+  list.forEach(function(vh) {
+    if (!vh.src) return;
+    var fade = vh.fade !== undefined ? vh.fade : 16;
+    var wrap = document.createElement('div');
+    wrap.className = 'scene-video-2d-wrap';
+    var maskCss = '-webkit-mask-image:linear-gradient(to bottom,transparent 0%,black ' + fade + '%,black ' + (100 - fade) + '%,transparent 100%),linear-gradient(to right,transparent 0%,black ' + fade + '%,black ' + (100 - fade) + '%,transparent 100%);-webkit-mask-composite:destination-in;mask-image:linear-gradient(to bottom,transparent 0%,black ' + fade + '%,black ' + (100 - fade) + '%,transparent 100%),linear-gradient(to right,transparent 0%,black ' + fade + '%,black ' + (100 - fade) + '%,transparent 100%);mask-composite:intersect;';
+    wrap.style.cssText = [
+      'width:' + (vh.width || 560) + 'px',
+      'height:' + (vh.height || 315) + 'px',
+      maskCss
+    ].join('');
+    var vid = document.createElement('video');
+    vid.className = 'scene-video-2d';
+    vid.src = vh.src;
+    vid.loop = vh.loop !== false;
+    vid.playsInline = true;
+    vid.muted = true;
+    vid.preload = 'metadata';
+    if (vh.poster) vid.poster = vh.poster;
+    if (vh.autoplay) {
+      vid.autoplay = true;
+      vid.muted = true;
+    }
+    wrap.appendChild(vid);
+    bindVideo2DTap(wrap, vid, vh);
+    var placeYaw = vh.yaw !== undefined ? degToRad(parseFloat(vh.yaw)) : 0;
+    var placePitch = vh.pitch !== undefined ? degToRad(parseFloat(vh.pitch)) : 0;
+    currentScene.hotspotContainer().createHotspot(wrap,
+      { yaw: placeYaw, pitch: placePitch },
+      { perspective: { radius: vh.radius || 900 } }
+    );
+    window.sceneVideoEls.push({ vid: vid, wrap: wrap, sceneId: sceneId });
+    console.log('🎬 2D動画配置: ' + vh.src + ' @ scene ' + sceneId);
+  });
 }
 
 // 出発地シーンIDに属する imageHotspots を全シーンから収集（誤って別シーン配下にあっても表示）
@@ -696,6 +1096,7 @@ function switchScene(sceneId, yaw, pitch, fov, fromPortalHotspot) {
   
   console.log('🔵 switchScene: sceneId=' + sceneId + ', yaw=' + (yaw !== undefined ? radToDeg(yaw).toFixed(2) + '°' : 'undefined') + ', pitch=' + (pitch !== undefined ? radToDeg(pitch).toFixed(2) + '°' : 'undefined'));
   
+  pauseAllSceneVideos();
   // ★hotspot フラグをリセット（新しいシーンで再度表示可能にする）
   if (window.hotspotImages) {
     window.hotspotImages = [];
@@ -728,7 +1129,12 @@ function switchScene(sceneId, yaw, pitch, fov, fromPortalHotspot) {
   
   var targetFov = fov !== undefined ? fov : currentView.parameters().fov;
 
-  var crossfadeDur=(typeof autoMoveActive!=='undefined'&&autoMoveActive)?Math.min(2000,Math.round(autoMoveInterval_ms*autoFadePct)):700;
+  var fadePct = (typeof autoMoveActive !== 'undefined' && autoMoveActive)
+    ? readAutoFadePctFromSlider()
+    : null;
+  var crossfadeDur = fadePct != null
+    ? Math.min(2000, Math.max(0, Math.round(autoMoveInterval_ms * fadePct)))
+    : 700;
   if (fromPortalHotspot) {
     crossfadeDur = Math.max(crossfadeDur, 1800);
   }
@@ -770,7 +1176,7 @@ function switchScene(sceneId, yaw, pitch, fov, fromPortalHotspot) {
       textEl.style.left = leftPct + '%';
       textEl.style.transition = 'none';
       textEl.style.opacity = '0';
-      textEl.style.display = 'inline-block';
+      textEl.style.display = 'block';
       textEl.getBoundingClientRect(); // 強制リフロー：opacity:0 を確定させる
       textEl.style.transition = 'opacity 1s ease';
       textEl.style.opacity = '1';
@@ -844,7 +1250,10 @@ function switchScene(sceneId, yaw, pitch, fov, fromPortalHotspot) {
         ih: ih,
         sceneId: sceneId,
         flagKey: 'hotspotShown_' + sceneId + '_' + ih.targetScene,
-        portalActive: false
+        portalActive: false,
+        videoPlaying: false,
+        linkedVideo: null,
+        autoFadeTimer: null
       };
       bindPortalTap(hitArea, function() { onPortalHotspotTap(hsRef); });
       
@@ -863,6 +1272,7 @@ function switchScene(sceneId, yaw, pitch, fov, fromPortalHotspot) {
     });
   }
 
+  attachVideoHotspots(sceneId, obj.data);
 }
 
 function updateUI() {
@@ -916,65 +1326,53 @@ function updateUI() {
           }
           console.log('🎎 hotspot フェードイン開始: ' + hs.ih.src + ' (fadeTime=' + hs.ih.fadeTime + 's, dispTime=' + dispMs + 'ms → totalTime=' + totalTime + 'ms ≈ ' + (totalTime/1000).toFixed(1) + '秒)');
           
-          // 自動フェードアウト
-          setTimeout(function() {
-            hidePortalMotion(hs.inner, hs.cover, hs.ih);
-            if (hs.portalImg) hs.portalImg.style.opacity = preset.reveal ? '0' : '1';
-            hs.img.style.opacity = '0';
-            setPortalTappable(hs, false);
-            console.log('🎎 hotspot フェードアウト開始: ' + hs.ih.src);
-            
-            // ★リセット表示が有効な場合、フラグをリセット（再度フェード可能にする）
-            if (hs.ih.resetDisplay) {
-              window[hs.flagKey] = false;
-              console.log('🔄 hotspot リセット表示有効: 次に表示範囲に入ったら再表示します');
-            }
-          }, totalTime);
+          // 動画つなぎポータルはタップまで表示を維持
+          if (hs.ih.videoSrc && hs.ih.playVideoOnTap !== false) {
+            console.log('🎬 動画ポータル: タップで ' + hs.ih.videoSrc + ' を再生');
+          } else {
+            // 自動フェードアウト
+            hs.autoFadeTimer = setTimeout(function() {
+              hidePortalMotion(hs.inner, hs.cover, hs.ih);
+              if (hs.portalImg) hs.portalImg.style.opacity = preset.reveal ? '0' : '1';
+              hs.img.style.opacity = '0';
+              setPortalTappable(hs, false);
+              console.log('🎎 hotspot フェードアウト開始: ' + hs.ih.src);
+              if (hs.ih.resetDisplay) {
+                window[hs.flagKey] = false;
+                console.log('🔄 hotspot リセット表示有効: 次に表示範囲に入ったら再表示します');
+              }
+            }, totalTime);
+          }
         }
       }
     });
   }
 
   // 緑矢印の表示制御（複数脇道対応）
-  document.getElementById('arrowUpGreen').style.visibility = (function() {
-    if (!currentSceneObj) {
-      console.log('🔴 currentSceneObj is null');
-      return 'hidden';
-    }
-    if (!window.greenArrowConfig || window.greenArrowConfig.arrows.length === 0) {
-      console.log('🔴 window.greenArrowConfig.arrows is empty');
-      return 'hidden';
-    }
-    
-    var yawDeg = radToDeg(normalizeAngle(currentView.parameters().yaw));
-    console.log('🔍 updateUI check - currentScene:', currentSceneObj.data.id, 'yawDeg:', Math.round(yawDeg), 'arrows count:', window.greenArrowConfig.arrows.length);
-    
-    // すべての脇道をチェック
-    for (var i = 0; i < window.greenArrowConfig.arrows.length; i++) {
-      var arrow = window.greenArrowConfig.arrows[i];
-      console.log('🔍 arrow ' + i + ':', 'sceneId=' + arrow.sceneId, 'range=' + arrow.startAngle + '～' + arrow.endAngle);
-      
-      // シーンID一致 & 角度範囲内か確認
-      if (currentSceneObj.data.id === arrow.sceneId) {
-        console.log('🔍 Scene match! Checking angle...');
+  (function() {
+    var greenEl = document.getElementById('arrowUpGreen');
+    if (!greenEl) return;
+    var showGreen = false;
+    if (currentSceneObj && window.greenArrowConfig && window.greenArrowConfig.arrows.length > 0) {
+      var yawDeg = radToDeg(normalizeAngle(currentView.parameters().yaw));
+      for (var gi = 0; gi < window.greenArrowConfig.arrows.length; gi++) {
+        var arrow = window.greenArrowConfig.arrows[gi];
+        if (currentSceneObj.data.id !== arrow.sceneId) continue;
         var isInRange = false;
         if (arrow.startAngle <= arrow.endAngle) {
           isInRange = yawDeg >= arrow.startAngle && yawDeg <= arrow.endAngle;
         } else {
           isInRange = yawDeg >= arrow.endAngle && yawDeg <= arrow.startAngle;
         }
-        
         if (isInRange) {
-          console.log('🟢 GREEN ARROW VISIBLE!', {sceneId: arrow.sceneId, yaw: Math.round(yawDeg), range: arrow.startAngle + '～' + arrow.endAngle});
-          return 'visible';
-        } else {
-          console.log('🟡 Angle mismatch:', yawDeg, 'not in range', arrow.startAngle + '～' + arrow.endAngle);
+          showGreen = true;
+          break;
         }
-      } else {
-        console.log('🟡 Scene mismatch:', currentSceneObj.data.id, '!==', arrow.sceneId);
       }
     }
-    return 'hidden';
+    greenEl.style.visibility = showGreen ? 'visible' : 'hidden';
+    if (showGreen) greenEl.classList.add('visible');
+    else greenEl.classList.remove('visible');
   })();
 }
 
@@ -1008,7 +1406,6 @@ document.getElementById('fadeSlider').addEventListener('input',function(e){
   var v=parseInt(e.target.value);autoFadePct=fadeToPct(v);
   document.getElementById('fadeVal').textContent=fadeLabels[v]||v;_save('fade',v);
 });
-applyAutoMoveSettings();
 
 /* ========================================
    ★統合版：黄色矢印処理
@@ -1142,7 +1539,7 @@ function executeMove(isUp) {
 
 // ★ 自動再生（ズームインのみ・黒画面なし）コースごと完全独立保存
 var autoMoveInterval_ms=1875;
-var breathMax=75,breathMin=75,breathFov=breathMax,autoFadePct=0.175;
+var breathMax=75,breathMin=75,breathFov=breathMax,autoFadePct;
 var autoMoveTimer=null,autoMoveInterval=null,autoZoomInterval=null;
 var autoMoveActive=false,autoStepping=false;
 
@@ -1164,6 +1561,13 @@ function applyAutoMoveSettings() {
   document.getElementById('fadeSlider').value=f;
   autoFadePct=fadeToPct(f);
   document.getElementById('fadeVal').textContent=fadeLabels[f]||f;
+}
+applyAutoMoveSettings();
+
+function readAutoFadePctFromSlider() {
+  var el = document.getElementById('fadeSlider');
+  if (!el) return autoFadePct || 0.875;
+  return fadeToPct(parseInt(el.value, 10) || 8);
 }
 
 function startContinuousZoom(){
@@ -1195,6 +1599,7 @@ function autoStepOnce(isUp,startYaw){if(!autoMoveActive||autoStepping)return;
 function setupArrow(btnId,isUp){var btn=document.getElementById(btnId);
   function onPress(){if(autoMoveActive){stopAutoMove();return;}
     autoMoveTimer=setTimeout(function(){autoMoveTimer=null;autoMoveActive=true;
+      autoFadePct=readAutoFadePctFromSlider();
       var startYaw=currentView.parameters().yaw;if(isUp)startContinuousZoom();
       autoMoveInterval=setInterval(function(){autoStepOnce(isUp,startYaw);},autoMoveInterval_ms);},500);}
   function onRelease(){if(autoMoveTimer){clearTimeout(autoMoveTimer);autoMoveTimer=null;
@@ -1259,18 +1664,22 @@ document.getElementById('arrowUpGreen').addEventListener('click', function() {
       }
       
       if (isInRange) {
-        var targetObj = scenesData[arrow.targetSceneId];
-        if (!targetObj) return;
+        var targetId = resolveSceneId(arrow.targetSceneId) || arrow.targetSceneId;
+        var targetObj = scenesData[targetId];
+        if (!targetObj) {
+          console.warn('⚠️ 緑矢印: 遷移先シーンが見つかりません:', arrow.targetSceneId);
+          return;
+        }
         var targetInitialYaw = targetObj.data.initialViewParameters.yaw;
         var departureYaw = currentView.parameters().yaw;
         var fromSceneId = currentSceneObj.data.id;
-        var returningToMain = isSideRoute(fromSceneId) && !isSideRoute(arrow.targetSceneId);
+        var returningToMain = isSideRoute(fromSceneId) && !isSideRoute(targetId);
 
         var newYaw = computeGreenArrowTargetYaw(arrow, departureYaw, targetInitialYaw, fromSceneId);
         var yawOff = arrow.yawOffset ? degToRad(parseFloat(arrow.yawOffset)) : 0;
         var pitchOff = arrow.pitchOffset ? degToRad(parseFloat(arrow.pitchOffset)) : 0;
 
-        console.log('🟢 GREEN ARROW: ' + fromSceneId + ' → ' + arrow.targetSceneId +
+        console.log('🟢 GREEN ARROW: ' + fromSceneId + ' → ' + targetId +
           ' newYaw: ' + radToDeg(newYaw).toFixed(2) + '°' +
           (arrow.yawOffset != null ? ' (yawOffset=' + arrow.yawOffset + '°)' : ''));
 
@@ -1284,12 +1693,12 @@ document.getElementById('arrowUpGreen').addEventListener('click', function() {
           window.returnScene = fromSceneId;
           window.departureYaw = departureYaw;
           window.departurePitch = currentView.parameters().pitch;
-          window.targetSceneId = arrow.targetSceneId;
+          window.targetSceneId = targetId;
           window.entryInitialYaw = targetInitialYaw;
           window.entryYawOffset = yawOff;
         }
 
-        switchScene(arrow.targetSceneId, newYaw, currentView.parameters().pitch + pitchOff, currentView.parameters().fov);
+        switchScene(targetId, newYaw, currentView.parameters().pitch + pitchOff, currentView.parameters().fov);
         return;
       }
     }
@@ -1382,7 +1791,12 @@ function computeGreenArrowTargetYaw(arrow, departureYaw, targetInitialYaw, fromS
 
 function degToRad(d) { return d * Math.PI / 180; }
 function radToDeg(r) { return r * 180 / Math.PI; }
-window.goToMap = function() { location.href = urlParams.get('back') || 'map.html'; };
+window.goToMap = function() {
+  courseBgmSessionPlayed = {};
+  activeBgmCourse = null;
+  stopAllBGM();
+  location.href = urlParams.get('back') || 'map.html';
+};
 
 // ========================================
 // ★ BGM再生管理
@@ -1391,47 +1805,94 @@ function shouldPlayBGM() {
   return audioEnabled && bgmPlaying && (bgmEnabled || bgmForce);
 }
 
+/** シーンの bgm または APP_DATA.courseBgm（コース別・既定ループなし） */
+function normalizeBgmItems(sceneData) {
+  if (!sceneData) return null;
+  var items = [];
+  var raw = sceneData.bgm;
+  if (Array.isArray(raw)) {
+    items = raw.map(function(item) {
+      if (typeof item === 'string') return { file: item, loop: false };
+      var o = item || {};
+      return { file: o.file, loop: o.loop === true };
+    });
+  } else if (typeof raw === 'string') {
+    items = raw.split(' ').map(function(s) { return s.trim(); }).filter(Boolean).map(function(f) { return { file: f, loop: false }; });
+  }
+  items = items.filter(function(it) { return it && it.file; });
+  if (items.length) return items;
+  var cb = data.courseBgm || (window.APP_DATA && window.APP_DATA.courseBgm);
+  if (cb && sceneData.course && cb[sceneData.course]) {
+    var fn = cb[sceneData.course];
+    if (typeof fn === 'string' && fn) return [{ file: fn, loop: false, fromCourse: true }];
+  }
+  return null;
+}
+
+function sceneUsesCourseBgm(sceneData) {
+  if (!sceneData || sceneData.bgm) return false;
+  var cb = data.courseBgm || (window.APP_DATA && window.APP_DATA.courseBgm);
+  return !!(cb && sceneData.course && cb[sceneData.course]);
+}
+
 function playSceneBGM(sceneId, opts) {
   var force = !!(opts && opts.force);
   if (!audioEnabled) return;
   if (!force && !shouldPlayBGM()) {
-    // 地図OFFで強制再生もしていない → 全停止
     stopAllBGM();
     return;
   }
-  
+
   var sceneObj = scenesData[sceneId];
-  if (!sceneObj || !sceneObj.data.bgm) {
-    // BGM指定なし：全BGMをフェードアウト
+  if (!sceneObj) return;
+
+  var course = sceneObj.data.course || null;
+  var bgmItems = normalizeBgmItems(sceneObj.data);
+
+  // bb→aa などコースが変わったら前コースのBGMを必ず止める
+  if (course && activeBgmCourse && course !== activeBgmCourse) {
     stopAllBGM();
-    return;
+    activeBgmCourse = null;
   }
-  
-  // data.js: bgm は [{file, loop}] の配列（作品によって string/array 混在もあるため吸収）
-  var bgmItems = [];
-  if (Array.isArray(sceneObj.data.bgm)) {
-    bgmItems = sceneObj.data.bgm.map(function(item) {
-      if (typeof item === 'string') return { file: item };
-      return item || {};
-    });
-  } else if (typeof sceneObj.data.bgm === 'string') {
-    bgmItems = sceneObj.data.bgm.split(' ').map(function(s) { return s.trim(); }).filter(Boolean).map(function(f) { return { file: f }; });
+
+  if (!bgmItems || !bgmItems.length) {
+    stopAllBGM();
+    activeBgmCourse = null;
+    return;
   }
 
   var bgmFiles = bgmItems.map(function(item) { return item.file; }).filter(Boolean);
-  
   if (bgmFiles.length === 0) {
     stopAllBGM();
+    activeBgmCourse = null;
     return;
   }
-  
-  // 新しいBGMファイル一覧を作成
+
+  var primaryFile = bgmFiles[0];
+
+  // 同一コース・同一曲が既に鳴っている → フェードやり直ししない（音量低下防止）
+  if (primaryFile && bgmAudios[primaryFile]) {
+    var cur = bgmAudios[primaryFile];
+    if (!cur.paused && !cur.ended && cur.volume > 0.05) {
+      if (cur.__fadeTimer) {
+        clearInterval(cur.__fadeTimer);
+        cur.__fadeTimer = null;
+      }
+      cur.volume = bgmVolume;
+      cur.loop = resolveLoopFlag(primaryFile, bgmItems[0]);
+      if (course) activeBgmCourse = course;
+      return;
+    }
+  }
+
+  if (course && courseBgmSessionPlayed[course] && sceneUsesCourseBgm(sceneObj.data)) {
+    if (course) activeBgmCourse = course;
+    return;
+  }
+
   var newBGMSet = {};
-  bgmFiles.forEach(function(file) {
-    newBGMSet[file] = true;
-  });
-  
-  // 古いBGMをフェードアウト（新しいリストにないもの）
+  bgmFiles.forEach(function(file) { newBGMSet[file] = true; });
+
   Object.keys(bgmAudios).forEach(function(key) {
     if (!newBGMSet[key]) {
       fadeOutAudio(bgmAudios[key], function() {
@@ -1440,47 +1901,84 @@ function playSceneBGM(sceneId, opts) {
       });
     }
   });
-  
-  // 新しいBGMを再生（既に再生中でなければ）
+
   bgmItems.forEach(function(item) {
     var file = item.file;
     if (!file) return;
     if (!bgmAudios[file] || (bgmAudios[file].paused && !bgmAudios[file].ended)) {
       playAudio('sounds/' + file, {
-        loop: resolveLoopFlag(file, item)
+        loop: resolveLoopFlag(file, item),
+        course: (item.fromCourse && course) ? course : null
       });
+      if (item.fromCourse && course) activeBgmCourse = course;
     } else {
-      // すでに鳴っている場合も loop 状態は合わせる
       bgmAudios[file].loop = resolveLoopFlag(file, item);
       bgmAudios[file].volume = bgmVolume;
+      if (item.fromCourse && course) activeBgmCourse = course;
     }
   });
 }
 
 function resolveLoopFlag(fileName, item) {
-  // data.js の loop 指定だけを採用（ファイル名からの推測はしない）
-  if (item && typeof item.loop === 'boolean') return item.loop;
+  if (item && item.loop === true) return true;
   return false;
 }
 
 function playAudio(filePath, opts) {
+  opts = opts || {};
   var audio = new Audio(filePath);
-  audio.loop = !!(opts && opts.loop);
-  audio.volume = 0; // fade in
-  
+  var key = filePath.replace('sounds/', '');
+  audio.loop = !!opts.loop;
+  audio.volume = 0;
+  audio.__bgmCourse = opts.course || null;
+  if (audio.__bgmCourse) courseBgmSessionPlayed[audio.__bgmCourse] = true;
+
   audio.addEventListener('canplay', function() {
+    if (bgmSuppressedForVideo > 0) return;
     fadeInAudio(audio, bgmVolume, 500);
   });
-  
+
   audio.addEventListener('error', function() {
     console.error('❌ BGM読込エラー:', filePath);
   });
-  
+
+  if (!audio.loop) {
+    audio.addEventListener('ended', function() {
+      if (audio.__bgmCourse) courseBgmSessionPlayed[audio.__bgmCourse] = true;
+      if (bgmAudios[key] === audio) delete bgmAudios[key];
+    });
+  }
+
   audio.play().catch(function(err) {
     console.error('❌ BGM再生エラー:', err);
   });
-  
-  bgmAudios[filePath.replace('sounds/', '')] = audio;
+
+  bgmAudios[key] = audio;
+}
+
+function fadeOutBgmForVideo() {
+  bgmSuppressedForVideo++;
+  var keys = Object.keys(bgmAudios);
+  if (!keys.length) return;
+  keys.forEach(function(key) {
+    var a = bgmAudios[key];
+    if (!a) return;
+    fadeOutAudio(a, function() {
+      try { a.pause(); } catch (e) {}
+    });
+  });
+}
+
+function restoreBgmAfterVideo() {
+  if (bgmSuppressedForVideo > 0) bgmSuppressedForVideo--;
+  if (bgmSuppressedForVideo > 0) return;
+  if (!shouldPlayBGM()) return;
+  Object.keys(bgmAudios).forEach(function(key) {
+    var a = bgmAudios[key];
+    if (!a || a.ended) return;
+    a.play().catch(function() {});
+    fadeInAudio(a, bgmVolume, 500);
+  });
 }
 
 function fadeOutAudio(audio, callback) {
@@ -1488,14 +1986,19 @@ function fadeOutAudio(audio, callback) {
     if (callback) callback();
     return;
   }
+  if (audio.__fadeTimer) {
+    clearInterval(audio.__fadeTimer);
+    audio.__fadeTimer = null;
+  }
   
   var startVol = audio.volume;
   var stepCount = bgmFadeOutDuration / 50;  // 50ms間隔
   var stepVol = startVol / stepCount;
-  var timer = setInterval(function() {
+  audio.__fadeTimer = setInterval(function() {
     audio.volume = Math.max(0, audio.volume - stepVol);
     if (audio.volume <= 0) {
-      clearInterval(timer);
+      clearInterval(audio.__fadeTimer);
+      audio.__fadeTimer = null;
       audio.volume = 0;
       if (callback) callback();
     }
@@ -1503,20 +2006,31 @@ function fadeOutAudio(audio, callback) {
 }
 
 function fadeInAudio(audio, targetVol, duration) {
-  audio.volume = 0;
-  var stepCount = duration / 50;
-  var stepVol = targetVol / stepCount;
-  var timer = setInterval(function() {
+  if (!audio) return;
+  if (audio.__fadeInTimer) {
+    clearInterval(audio.__fadeInTimer);
+    audio.__fadeInTimer = null;
+  }
+  if (audio.volume >= targetVol * 0.92) {
+    audio.volume = targetVol;
+    return;
+  }
+  var startVol = audio.volume;
+  var stepCount = Math.max(1, duration / 50);
+  var stepVol = (targetVol - startVol) / stepCount;
+  audio.__fadeInTimer = setInterval(function() {
     if (audio.volume < targetVol) {
       audio.volume = Math.min(targetVol, audio.volume + stepVol);
     } else {
-      clearInterval(timer);
+      clearInterval(audio.__fadeInTimer);
+      audio.__fadeInTimer = null;
       audio.volume = targetVol;
     }
   }, 50);
 }
 
 function stopAllBGM() {
+  activeBgmCourse = null;
   Object.keys(bgmAudios).forEach(function(key) {
     fadeOutAudio(bgmAudios[key], function() {
       bgmAudios[key].pause();

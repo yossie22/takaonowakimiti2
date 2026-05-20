@@ -1,3 +1,4 @@
+// GENERATOR_HISTORY: [{"sceneId":"0-aa001","text":"観賞温室では、熱帯、亜熱帯の植物を1年中観賞できます。\nこの温室の暖房には、隣接する佐野清掃センターで発生する                                                ゴミ焼却余熱が利用されています。。","fontSize":16,"fontFamily":"'Hiragino Kaku Gothic Pro','ヒラギノ角ゴ Pro W3',sans-serif","color":"#ffff00","pitch":1.44,"yaw":0.77},{"sceneId":"0-aa001","text":"観賞温室では、熱帯、亜熱帯の植物を1年中観賞できます。\nこの温室の暖房には、隣接する佐野清掃センターで発生するゴミ焼却余熱が利用されています。。","fontSize":17,"fontFamily":"'Hiragino Kaku Gothic Pro','ヒラギノ角ゴ Pro W3',sans-serif","color":"#ffffff","pitch":-0.65,"yaw":-0.17},{"sceneId":"13-bb001","text":"鉢仕立てのブーゲンビリアが見事です！","fontSize":22,"fontFamily":"'Hiragino Kaku Gothic Pro','ヒラギノ角ゴ Pro W3',sans-serif","color":"#ffffff","pitch":1.36,"yaw":-0.38},{"sceneId":"0-aa001","text":"観賞温室では、熱帯、亜熱帯の植物を1年中観賞できます。\nこの温室の暖房には、隣接する佐野清掃センターで発生するゴミ焼却余熱が利用されています。","fontSize":16,"fontFamily":"'Hiragino Kaku Gothic Pro','ヒラギノ角ゴ Pro W3',sans-serif","color":"#ffffff","pitch":-0.44,"yaw":-0.38}]
 var APP_DATA = {
   "scenes": [
     {
@@ -32,7 +33,20 @@ var APP_DATA = {
           "target": "0-aa001"
         }
       ],
-      "infoHotspots": [],
+      "infoHotspots": [
+        {
+          "yaw": 0.77,
+          "pitch": 1.44,
+          "rotation": 0,
+          "title": "観賞温室では、熱帯、亜熱帯の植物を1年中観賞できます。\nこの温室の暖房には、隣接する佐野清掃センターで発生する                                                ゴミ焼却余熱が利用されています。。",
+          "text": "観賞温室では、熱帯、亜熱帯の植物を1年中観賞できます。\nこの温室の暖房には、隣接する佐野清掃センターで発生する                                                ゴミ焼却余熱が利用されています。。",
+          "style": {
+            "fontSize": "16px",
+            "fontFamily": "'Hiragino Kaku Gothic Pro','ヒラギノ角ゴ Pro W3',sans-serif",
+            "color": "#ffff00"
+          }
+        }
+      ],
       "position": 1,
       "course": "aa",
       "imageHotspots": [
@@ -487,7 +501,26 @@ var APP_DATA = {
       ],
       "infoHotspots": [],
       "position": 12,
-      "course": "aa"
+      "course": "aa",
+      "imageHotspots": [
+        {
+          "sceneStartId": "11-aa012",
+          "sourceScene": "11-aa012",
+          "src": "コルジリネ.png",
+          "width": 620,
+          "height": 620,
+          "yawCenter": 25,
+          "yawRange": 35,
+          "fadeTime": 2.5,
+          "dispTime": 12000,
+          "startHoldTime": 500,
+          "effect": "revealGrowSoft",
+          "resetDisplay": false,
+          "playVideoOnTap": true,
+          "videoSrc": "aa_test.mp4",
+          "videoLoop": false
+        }
+      ]
     },
     {
       "id": "12-aa013",
@@ -557,7 +590,20 @@ var APP_DATA = {
           "target": "13-bb001"
         }
       ],
-      "infoHotspots": [],
+      "infoHotspots": [
+        {
+          "yaw": 0.77,
+          "pitch": 1.44,
+          "rotation": 0,
+          "title": "鉢仕立てのブーゲンビリアが見事です！",
+          "text": "鉢仕立てのブーゲンビリアが見事です！",
+          "style": {
+            "fontSize": "16px",
+            "fontFamily": "'Hiragino Kaku Gothic Pro','ヒラギノ角ゴ Pro W3',sans-serif",
+            "color": "#ffff00"
+          }
+        }
+      ],
       "position": 1,
       "course": "bb"
     },
@@ -706,5 +752,11 @@ var APP_DATA = {
       "course": "dd"
     }
   ],
+  "courseBgm": {
+    "aa": "aa.mp3",
+    "bb": "bb.mp3",
+    "cc": "cc.mp3",
+    "dd": "dd.mp3"
+  },
   "name": "Local 1024tiles"
 };

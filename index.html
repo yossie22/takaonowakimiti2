@@ -18,6 +18,9 @@ body, html { width: 100%; height: 100%; overflow: hidden; background: #222; }
 .pin-icon { width: 36px; height: 36px; border: 3px solid white; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 3px 8px rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; }
 .pin-number { transform: rotate(45deg); font-size: 14px; font-weight: bold; color: white; line-height: 1; }
 .pin-label { background: rgba(255,255,255,0.95); color: #333; font-size: 12px; font-weight: bold; padding: 3px 8px; border-radius: 4px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.4); margin-bottom: 4px; pointer-events: none; font-family: sans-serif; }
+.map-bgm-bar { position: fixed; right: 12px; bottom: 12px; z-index: 50; background: rgba(0,0,0,0.72); color: #fff; padding: 10px 14px; border-radius: 8px; font-size: 13px; font-family: sans-serif; box-shadow: 0 2px 10px rgba(0,0,0,0.4); }
+.map-bgm-bar label { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+.map-bgm-bar input { width: 18px; height: 18px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -30,12 +33,27 @@ body, html { width: 100%; height: 100%; overflow: hidden; background: #222; }
   </div>
   </div>
 </div>
+<div class="map-bgm-bar">
+  <label><input type="checkbox" id="mapBgmOff"> BGMオフでVRに入る（<code>?bgm=0</code>）</label>
+</div>
 <script>
 var MAP_BOUNDS = { topLeft: { lat: 33.190974, lng: 131.724798 }, bottomRight: { lat: 33.190432, lng: 131.725909 } };
 var MAP_INSETS = { left: 0, top: 0, right: 0, bottom: 0 };
 var MAP_PIN_OFFSET = { x: 3, y: -1 };
 var MAP_TWO_POINT = null;
+
+(function () {
+  var cb = document.getElementById('mapBgmOff');
+  if (cb && sessionStorage.getItem('mapBgmOff') === '1') cb.checked = true;
+  if (cb) {
+    cb.addEventListener('change', function () {
+      sessionStorage.setItem('mapBgmOff', cb.checked ? '1' : '0');
+    });
+  }
+})();
+
 function mercatorY(lat) { var r = lat * Math.PI / 180; return Math.log(Math.tan(Math.PI / 4 + r / 2)); }
+
 function gpsToPercent(lat, lng) {
   var x, y, bounds = MAP_BOUNDS, tp = MAP_TWO_POINT;
   if (tp && tp.p1 && tp.p2) {
@@ -55,20 +73,6 @@ function gpsToPercent(lat, lng) {
   x += (MAP_PIN_OFFSET.x || 0); y += (MAP_PIN_OFFSET.y || 0);
   return { x: x, y: y };
 }
-var PINS = [
-
-  // Pin #1: 入り口 (aa - sceneId: 0-aa001)
-  { lat: 33.19087, lng: 131.725263, name: '入り口', sceneId: '0-aa001', color: '#800040', greenArrows: [{ sceneId: '10-aa011', startAngle: -70, endAngle: -100, targetSceneId: '13-bb001' }, { sceneId: '10-aa011', startAngle: 50, endAngle: 80, targetSceneId: '16-cc001' }, { sceneId: '11-aa012', startAngle: -70, endAngle: -110, targetSceneId: '17dd001' }] },
-
-  // Pin #2: ブーゲンビリア (bb - sceneId: 13-bb001)
-  { lat: 33.190465, lng: 131.72533, name: 'ブーゲンビリア', sceneId: '13-bb001', color: '#ff80c0', greenArrows: [{ sceneId: '13-bb001', startAngle: 100, endAngle: 130, targetSceneId: '10-aa011', yawOffset: 90 }] },
-
-  // Pin #3: 中央広場 (cc - sceneId: 16-cc001)
-  { lat: 33.190525, lng: 131.725291, name: '中央広場', sceneId: '16-cc001', color: '#00e600', greenArrows: [{ sceneId: '16-cc001', startAngle: 60, endAngle: 100, targetSceneId: '10-aa011', yawOffset: -90 }] },
-
-  // Pin #4: シャクヤク (dd - sceneId: 17-dd001)
-  { lat: 33.190619, lng: 131.72507, name: 'シャクヤク', sceneId: '17-dd001', color: '#8080ff', greenArrows: [{ sceneId: '17-dd001', startAngle: 70, endAngle: 110, targetSceneId: '11-aa012', yawOffset: 90 }] }
-];
 
 function goToScene(pin) {
   var url = './viewer.html?id=' + pin.sceneId;
@@ -77,9 +81,27 @@ function goToScene(pin) {
     var encoded = encodeURIComponent(JSON.stringify(pin.greenArrows));
     url += '&greenArrows=' + encoded;
   }
+  if (document.getElementById('mapBgmOff') && document.getElementById('mapBgmOff').checked) {
+    url += '&bgm=0';
+  }
   url += '&back=./map.html';
   window.location.href = url;
 }
+
+var PINS = [
+
+  // Pin #1: 入り口 (aa - sceneId: 0-aa001)
+  { lat: 33.19087, lng: 131.725263, name: '入り口', sceneId: '0-aa001', color: '#800040', greenArrows: [{ sceneId: '10-aa011', startAngle: -70, endAngle: -100, targetSceneId: '13-bb001' }, { sceneId: '10-aa011', startAngle: 50, endAngle: 80, targetSceneId: '16-cc001' }, { sceneId: '11-aa012', startAngle: -70, endAngle: -110, targetSceneId: '17-dd001', yawOffset: 20, pitchOffset: 32 }] },
+
+  // Pin #2: ブーゲンビリア (bb - sceneId: 13-bb001)
+  { lat: 33.190465, lng: 131.72533, name: 'ブーゲンビリア', sceneId: '13-bb001', color: '#ff80c0', greenArrows: [{ sceneId: '13-bb001', startAngle: 100, endAngle: 130, targetSceneId: '10-aa011', yawOffset: 90 }] },
+
+  // Pin #3: 中央広場 (cc - sceneId: 16-cc001)
+  { lat: 33.190525, lng: 131.725291, name: '中央広場', sceneId: '16-cc001', color: '#00e600', greenArrows: [{ sceneId: '16-cc001', startAngle: 60, endAngle: 100, targetSceneId: '10-aa011', yawOffset: -90 }] },
+
+  // Pin #4: シャクヤク (dd - sceneId: 17-dd001)
+  { lat: 33.190619, lng: 131.72507, name: 'シャクヤク', sceneId: '17-dd001', color: '#8080ff', greenArrows: [{ sceneId: '17-dd001', startAngle: -90, endAngle: -130, targetSceneId: '11-aa012', yawOffset: 90 }] }
+];
 
 var container = document.getElementById('mapStage');
 PINS.forEach(function(pin, i) {
