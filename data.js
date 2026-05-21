@@ -500,7 +500,29 @@ var APP_DATA = {
       ],
       "infoHotspots": [],
       "position": 12,
-      "course": "aa"
+      "course": "aa",
+      "imageHotspots": [
+        {
+          "sceneStartId": "11-aa012",
+          "sourceScene": "11-aa012",
+          "src": "aa012v.png",
+          "width": 700,
+          "height": 700,
+          "yawCenter": 0,
+          "yawRange": 20,
+          "targetScene": "11-aa012",
+          "targetYaw": 0,
+          "targetPitch": 0,
+          "fadeTime": 5,
+          "dispTime": 5000,
+          "startHoldTime": 2500,
+          "effect": "revealGrow",
+          "resetDisplay": false,
+          "videoSrc": "aa_test.mp4",
+          "playVideoOnTap": true,
+          "videoLoop": false
+        }
+      ]
     },
     {
       "id": "12-aa013",
