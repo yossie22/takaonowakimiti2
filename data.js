@@ -172,7 +172,7 @@ var APP_DATA = {
           "targetPitch": 0.5759586531581288,
           "fadeTime": 5,
           "dispTime": 5000,
-          "startHoldTime": 2500,
+          "startHoldTime": 500,
           "effect": "growTiny",
           "resetDisplay": false
         }
@@ -515,12 +515,29 @@ var APP_DATA = {
           "targetPitch": 0,
           "fadeTime": 5,
           "dispTime": 5000,
-          "startHoldTime": 2500,
+          "startHoldTime": 500,
           "effect": "revealGrow",
           "resetDisplay": false,
           "videoSrc": "aa_test.mp4",
           "playVideoOnTap": true,
           "videoLoop": false
+        },
+        {
+          "sceneStartId": "11-aa012",
+          "sourceScene": "11-aa012",
+          "src": "peony.png",
+          "width": 700,
+          "height": 700,
+          "yawCenter": -70,
+          "yawRange": 25,
+          "targetScene": "17-dd001",
+          "targetYaw": 0.12217304763960307,
+          "targetPitch": 0.6457718232379019,
+          "fadeTime": 5,
+          "dispTime": 5000,
+          "startHoldTime": 100,
+          "effect": "grow",
+          "resetDisplay": false
         }
       ]
     },
@@ -730,7 +747,7 @@ var APP_DATA = {
           "targetPitch": 0,
           "fadeTime": 5,
           "dispTime": 5000,
-          "startHoldTime": 2500,
+          "startHoldTime": 500,
           "effect": "grow",
           "resetDisplay": false
         }
@@ -781,11 +798,11 @@ var APP_DATA = {
           "yawCenter": -100,
           "yawRange": 20,
           "targetScene": "11-aa012",
-          "targetYaw": 1.5707963267948966,
-          "targetPitch": 0,
+          "targetYaw": 0.12217304763960307,
+          "targetPitch": 0.6108652381980153,
           "fadeTime": 5,
           "dispTime": 5000,
-          "startHoldTime": 2500,
+          "startHoldTime": 500,
           "effect": "grow",
           "resetDisplay": false
         }
